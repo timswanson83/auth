@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Signing you in...</title>
+<style>
+  body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#07121f;color:#93c5fd;}
+  p{font-size:16px;}
+</style>
+</head>
+<body>
+<p>✅ Signed in — returning to app...</p>
+<script>
+  if(location.hash && location.hash.includes('access_token')){
+    const token = new URLSearchParams(location.hash.substring(1)).get('access_token');
+    if(token){
+      localStorage.setItem('vtdb_tk', token);
+      const ret = localStorage.getItem('vtdb_return');
+      if(ret){ location.href = ret; }
+      else { document.querySelector('p').textContent = '✅ Signed in — you can close this tab and return to the app.'; }
+    }
+  } else {
+    document.querySelector('p').textContent = 'No token found — please try signing in again.';
+  }
+</script>
+</body>
+</html>
