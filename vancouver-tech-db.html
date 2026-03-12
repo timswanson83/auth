@@ -785,7 +785,21 @@ async function gFetch(url) {
 // ══════════════════════════════════════════════════════
 function toSpFields(rec) {
   const f = {};
-  Object.entries(SP_MAP).forEach(([k, spk]) => { f[spk] = rec[k] || ''; });
+  Object.entries(SP_MAP).forEach(([k, spk]) => {
+    // Skip Title field on create/update — SharePoint manages it
+    if (spk === 'Title') return;
+    // field_3 is a number column in SP — skip if empty, otherwise send as-is
+    if (spk === 'field_3') {
+      if (rec[k]) f[spk] = rec[k];
+      return;
+    }
+    // field_5, field_6, field_8 are also number columns — skip if empty
+    if (['field_5','field_6','field_8'].includes(spk)) {
+      if (rec[k]) f[spk] = rec[k];
+      return;
+    }
+    f[spk] = rec[k] || '';
+  });
   return f;
 }
 
