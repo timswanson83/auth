@@ -902,15 +902,22 @@ function toSpFields(rec) {
   return f;
 }
 
+let _creating = false;
 async function spCreate(rec) {
-  if (!msToken || !spSiteId || !spListId) return null;
-  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: toSpFields(rec) })
-  });
-  const data = await r.json();
-  return data.id || null;
+  if (_creating) return null;
+  _creating = true;
+  try {
+    if (!msToken || !spSiteId || !spListId) return null;
+    const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: toSpFields(rec) })
+    });
+    const data = await r.json();
+    return data.id || null;
+  } finally {
+    _creating = false;
+  }
 }
 
 async function spUpdate(id, rec) {
@@ -1121,7 +1128,7 @@ async function addNewRow() {
     id: 'new_' + Date.now(),
     companyName:'', contactName:'', title:'', telNumber:'',
     email:'', liStatus:'Not Contacted', liPlatform:'', liOrLir:'',
-    invenias:'No', consultant:'', followUpDate:'', notes:''
+    invenias:'', consultant:'', followUpDate:'', notes:''
   };
   if (msToken && spSiteId && spListId) {
     try {
