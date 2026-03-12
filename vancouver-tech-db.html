@@ -653,44 +653,139 @@ function loadDemoData() {
 // ══════════════════════════════════════════════════════
 //  MICROSOFT AUTH
 // ══════════════════════════════════════════════════════
-function msSignIn() {
-  const cid = AZ_CLIENT;
-  const tid = AZ_TENANT;
-  if (!cid || !tid) { spMsg('Enter your Azure Client ID and Tenant ID first.', 'warn'); return; }
+// ══════════════════════════════════════════════════════
+//  MICROSOFT AUTH — PKCE flow (long-lived sessions)
+// ══════════════════════════════════════════════════════
+
+function base64url(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+async function generatePKCE() {
+  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest   = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = base64url(digest);
+  return { verifier, challenge };
+}
+
+async function msSignIn() {
+  const { verifier, challenge } = await generatePKCE();
+  localStorage.setItem('vtdb_pkce', verifier);
+  localStorage.setItem('vtdb_return', location.href.split('#')[0]);
   const ru = encodeURIComponent('https://timswanson83.github.io/auth');
   const sc = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email');
   const st = encodeURIComponent(location.href.split('#')[0]);
-  location.href = `https://login.microsoftonline.com/${tid}/oauth2/v2.0/authorize?client_id=${cid}&response_type=token&redirect_uri=${ru}&scope=${sc}&response_mode=fragment&state=${st}`;
+  location.href = `https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/authorize`
+    + `?client_id=${AZ_CLIENT}&response_type=code&redirect_uri=${ru}`
+    + `&scope=${sc}&response_mode=query&state=${st}`
+    + `&code_challenge=${challenge}&code_challenge_method=S256`
+    + `&prompt=select_account`;
 }
 
-function checkMsToken() {
-  // If we landed on localhost with a token in the hash, extract and store it
-  // then redirect back to the app file location stored in localStorage
-  if (location.hostname === 'localhost' && location.hash && location.hash.includes('access_token')) {
-    const p = new URLSearchParams(location.hash.substring(1));
-    const token = p.get('access_token');
-    if (token) {
-      localStorage.setItem('vtdb_tk', token);
-      // Redirect back to the app
-      const returnUrl = localStorage.getItem('vtdb_return') || '';
-      if (returnUrl) { location.href = returnUrl; return; }
-    }
+async function exchangeCodeForToken(code) {
+  const verifier = localStorage.getItem('vtdb_pkce');
+  const body = new URLSearchParams({
+    client_id:     AZ_CLIENT,
+    grant_type:    'authorization_code',
+    code,
+    redirect_uri:  'https://timswanson83.github.io/auth',
+    code_verifier: verifier,
+    scope:         'User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email',
+  });
+  const r = await fetch(`https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString()
+  });
+  const data = await r.json();
+  if (data.access_token) {
+    localStorage.setItem('vtdb_tk',  data.access_token);
+    localStorage.setItem('vtdb_exp', Date.now() + (data.expires_in * 1000));
+    if (data.refresh_token) localStorage.setItem('vtdb_rt', data.refresh_token);
+    return data.access_token;
   }
-  // Normal flow — check for token in hash (when redirect URI matches current page)
-  if (location.hash && location.hash.includes('access_token')) {
-    const p = new URLSearchParams(location.hash.substring(1));
-    msToken = p.get('access_token');
-    if (msToken) { localStorage.setItem('vtdb_tk', msToken); setConn(true); }
+  throw new Error(data.error_description || 'Token exchange failed');
+}
+
+async function refreshAccessToken() {
+  const rt = localStorage.getItem('vtdb_rt');
+  if (!rt) return null;
+  const body = new URLSearchParams({
+    client_id:     AZ_CLIENT,
+    grant_type:    'refresh_token',
+    refresh_token: rt,
+    scope:         'User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email',
+  });
+  try {
+    const r = await fetch(`https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
+    });
+    const data = await r.json();
+    if (data.access_token) {
+      localStorage.setItem('vtdb_tk',  data.access_token);
+      localStorage.setItem('vtdb_exp', Date.now() + (data.expires_in * 1000));
+      if (data.refresh_token) localStorage.setItem('vtdb_rt', data.refresh_token);
+      return data.access_token;
+    }
+  } catch(e) { console.warn('Refresh failed:', e); }
+  return null;
+}
+
+async function getValidToken() {
+  const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
+  const tk  = localStorage.getItem('vtdb_tk');
+  // Refresh 5 minutes before expiry
+  if (tk && Date.now() < exp - 300000) return tk;
+  // Try to refresh
+  const refreshed = await refreshAccessToken();
+  if (refreshed) return refreshed;
+  // Need to sign in again
+  return null;
+}
+
+async function checkMsToken() {
+  // Handle auth code callback (PKCE flow)
+  const params = new URLSearchParams(location.search);
+  const code   = params.get('code');
+  const state  = params.get('state');
+  if (code) {
     history.replaceState({}, document.title, location.pathname);
+    try {
+      showToast('Completing sign-in…', 'info');
+      msToken = await exchangeCodeForToken(code);
+      setConn(true);
+      if (state) { location.href = decodeURIComponent(state); return; }
+      loadFromSharePoint();
+    } catch(e) {
+      showToast('Sign-in failed: ' + e.message, 'err');
+      loadDemoData();
+    }
+    return;
+  }
+  // Check existing token
+  msToken = await getValidToken();
+  if (msToken) {
+    setConn(true);
     loadFromSharePoint();
   } else {
-    const t = localStorage.getItem('vtdb_tk');
-    if (t) { msToken = t; setConn(true); loadFromSharePoint(); }
+    localStorage.removeItem('vtdb_tk');
+    localStorage.removeItem('vtdb_rt');
+    loadDemoData();
   }
 }
+
+// Auto-refresh token every 45 minutes while app is open
+setInterval(async () => {
+  const refreshed = await refreshAccessToken();
+  if (refreshed) { msToken = refreshed; }
+}, 45 * 60 * 1000);
 
 async function msTest() {
   spMsg('Testing…', 'info');
+  msToken = await getValidToken();
   if (!msToken) { spMsg('Not signed in. Click Sign in with Microsoft first.', 'warn'); return; }
   try {
     const r = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + msToken } });
@@ -699,11 +794,11 @@ async function msTest() {
       spMsg(`✅ Connected as ${m.displayName} (${m.mail || m.userPrincipalName})`, 'ok');
       setConn(true);
     } else {
-      const e = await r.json();
-      if (e.error?.code === 'InvalidAuthenticationToken') {
-        msToken = null; localStorage.removeItem('vtdb_tk'); setConn(false);
-        spMsg('Session expired — please sign in again.', 'warn');
-      } else spMsg('Error: ' + (e.error?.message || r.status), 'err');
+      msToken = null;
+      localStorage.removeItem('vtdb_tk');
+      localStorage.removeItem('vtdb_rt');
+      setConn(false);
+      spMsg('Session expired — please sign in again.', 'warn');
     }
   } catch(e) { spMsg('Network error: ' + e.message, 'err'); }
 }
@@ -777,6 +872,8 @@ async function refreshRecords() {
 }
 
 async function gFetch(url) {
+  msToken = await getValidToken();
+  if (!msToken) { setConn(false); throw new Error('Not authenticated'); }
   return fetch(url, { headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' } });
 }
 
