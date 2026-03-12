@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biz Dev 2026 — Vancouver Tech DB</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:         #07121f;
+  --surface:      #0d2040;
+  --surface-r:    #112548;
+  --surface-c:    #152d58;
+  --blue-deep:    #1a3a6e;
+  --blue-rich:    #1e4db7;
+  --blue-bright:  #2563eb;
+  --blue-light:   #3b82f6;
+  --blue-pale:    #93c5fd;
+  --accent:       #60a5fa;
+  --border:       rgba(59,130,246,0.22);
+  --border-l:     rgba(59,130,246,0.09);
+  --text-1:       #eef4ff;
+  --text-2:       #8fb4d8;
+  --text-3:       #456a92;
+  --green:        #10b981;
+  --amber:        #f59e0b;
+  --red:          #ef4444;
+  --pink:         #ec4899;
+  --purple:       #6366f1;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--navy);
+  color:var(--text-1);
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 70% 40% at 10% 0%,rgba(30,77,183,0.15) 0%,transparent 100%),
+    radial-gradient(ellipse 50% 30% at 90% 100%,rgba(10,50,120,0.12) 0%,transparent 100%);
+}
+
+/* ── HEADER ── */
+header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 24px;display:flex;align-items:center;justify-content:space-between;
+  height:56px;position:sticky;top:0;z-index:100;
+}
+.logo{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;letter-spacing:.07em;color:var(--blue-pale);}
+.logo span{color:var(--accent);}
+.header-right{display:flex;align-items:center;gap:10px;}
+.conn-pill{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface-r);border:1px solid var(--border-l);
+  border-radius:100px;padding:4px 12px;font-size:11px;color:var(--text-3);
+}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--red);transition:background .3s;}
+.conn-dot.on{background:var(--green);}
+
+/* ── TOOLBAR ── */
+.toolbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:10px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.search-wrap{position:relative;flex:1;min-width:200px;max-width:340px;}
+.search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;}
+.search-input{
+  width:100%;padding:8px 12px 8px 34px;
+  background:var(--surface-c);border:1px solid var(--border);
+  border-radius:8px;color:var(--text-1);
+  font-family:'DM Sans',sans-serif;font-size:13px;outline:none;
+  transition:border-color .2s;
+}
+.search-input:focus{border-color:var(--blue-light);}
+.search-input::placeholder{color:var(--text-3);}
+.filter-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.filter-label{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;}
+select.fsel{
+  background:var(--surface-c);border:1px solid var(--border);
+  border-radius:8px;padding:7px 10px;
+  color:var(--text-2);font-family:'DM Sans',sans-serif;font-size:12px;
+  outline:none;cursor:pointer;transition:border-color .2s;
+}
+select.fsel:focus{border-color:var(--blue-light);}
+.toolbar-right{margin-left:auto;display:flex;gap:8px;}
+.btn{
+  padding:7px 14px;border-radius:7px;border:none;
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;
+  white-space:nowrap;
+}
+.btn-blue{background:var(--blue-rich);color:#fff;}
+.btn-blue:hover{background:var(--blue-bright);}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-2);}
+.btn-outline:hover{border-color:var(--blue-light);color:var(--blue-light);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-2);border-radius:7px;padding:7px 14px;}
+.btn-ghost:hover{color:var(--text-1);}
+.btn-danger{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3);}
+.btn-danger:hover{background:rgba(239,68,68,.25);}
+.btn-green{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);}
+.btn-green:hover{background:rgba(16,185,129,.25);}
+
+/* ── RECORD COUNT ── */
+.rec-count{font-size:11px;color:var(--text-3);padding:0 24px 8px;margin-top:8px;}
+
+/* ── DATA TABLE ── */
+.table-container{
+  overflow-x:auto;overflow-y:auto;
+  max-height:calc(100vh - 160px);
+  margin:0;
+}
+table{
+  width:100%;border-collapse:collapse;
+  font-size:13px;table-layout:fixed;
+}
+/* Column widths */
+col.c-company{width:180px;}
+col.c-contact{width:150px;}
+col.c-title{width:150px;}
+col.c-tel{width:120px;}
+col.c-email{width:190px;}
+col.c-listatus{width:120px;}
+col.c-liplatform{width:130px;}
+col.c-lilir{width:130px;}
+col.c-invenias{width:110px;}
+col.c-notes{width:220px;}
+col.c-actions{width:70px;}
+
+thead{position:sticky;top:0;z-index:10;}
+thead th{
+  background:var(--surface);
+  text-align:left;padding:10px 12px;
+  font-size:10px;font-weight:700;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.08em;
+  border-bottom:2px solid var(--border);
+  border-right:1px solid var(--border-l);
+  white-space:nowrap;cursor:pointer;user-select:none;
+  transition:color .15s;
+}
+thead th:hover{color:var(--text-2);}
+thead th:last-child{border-right:none;cursor:default;}
+thead th .si{opacity:.35;margin-left:3px;font-size:9px;}
+thead th.sorted{color:var(--blue-light);}
+thead th.sorted .si{opacity:1;}
+
+tbody tr{
+  border-bottom:1px solid var(--border-l);
+  transition:background .08s;
+}
+tbody tr:hover{background:rgba(59,130,246,0.05);}
+tbody tr.selected{background:rgba(59,130,246,0.1);}
+tbody tr.editing-row{background:rgba(37,99,235,0.08);}
+
+td{
+  padding:0;border-right:1px solid var(--border-l);
+  vertical-align:middle;position:relative;
+}
+td:last-child{border-right:none;}
+
+/* ── CELL DISPLAY ── */
+.cell-display{
+  padding:9px 12px;min-height:38px;
+  display:flex;align-items:center;
+  font-size:13px;color:var(--text-2);
+  cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cell-display.company{color:var(--text-1);font-weight:500;}
+.cell-display.email a{color:var(--blue-light);text-decoration:none;}
+.cell-display.email a:hover{text-decoration:underline;}
+
+/* ── INLINE EDIT ── */
+.cell-edit{display:none;padding:2px;}
+.cell-edit input,.cell-edit select,.cell-edit textarea{
+  width:100%;padding:7px 10px;
+  background:var(--surface);border:2px solid var(--blue-light);
+  border-radius:6px;color:var(--text-1);
+  font-family:'DM Sans',sans-serif;font-size:13px;
+  outline:none;
+}
+.cell-edit textarea{resize:none;height:60px;}
+td.active-edit .cell-display{display:none;}
+td.active-edit .cell-edit{display:block;}
+
+/* ── BADGE ── */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 9px;border-radius:100px;
+  font-size:10px;font-weight:700;letter-spacing:.03em;white-space:nowrap;
+}
+.bdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+
+/* ── ROW ACTIONS ── */
+.row-actions{
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  padding:4px;
+}
+.icon-btn{
+  width:26px;height:26px;border-radius:5px;border:none;
+  background:transparent;color:var(--text-3);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:13px;transition:all .15s;
+}
+.icon-btn:hover.view{background:rgba(59,130,246,.15);color:var(--blue-light);}
+.icon-btn:hover.del{background:rgba(239,68,68,.15);color:#fca5a5;}
+
+/* ── NEW ROW ── */
+.new-row-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 24px;font-size:12px;color:var(--text-3);
+  cursor:pointer;border-top:1px solid var(--border-l);
+  transition:all .15s;background:transparent;width:100%;border:none;
+  border-top:1px solid var(--border-l);
+  font-family:'DM Sans',sans-serif;
+}
+.new-row-btn:hover{background:rgba(59,130,246,.05);color:var(--blue-light);}
+
+/* ── CARD MODAL ── */
+.overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(4,10,25,.9);z-index:200;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+}
+.overlay.open{display:flex;}
+.card{
+  background:var(--surface-c);border:1px solid var(--border);
+  border-radius:16px;width:680px;max-width:96vw;
+  max-height:92vh;overflow-y:auto;
+  box-shadow:0 40px 120px rgba(0,0,0,.7);
+}
+.card-head{
+  padding:20px 24px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:var(--surface-c);z-index:1;
+}
+.card-avatar{
+  width:44px;height:44px;border-radius:10px;flex-shrink:0;
+  background:var(--blue-deep);display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--accent);
+}
+.card-title-wrap{flex:1;margin-left:14px;}
+.card-company{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;}
+.card-contact{font-size:13px;color:var(--text-3);margin-top:2px;}
+.card-x{
+  width:30px;height:30px;border-radius:6px;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text-3);cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.card-x:hover{border-color:var(--blue-light);color:var(--text-1);}
+.card-body{padding:24px;}
+.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.card-field{background:var(--surface);border-radius:8px;padding:11px 14px;}
+.card-field.full{grid-column:1/-1;}
+.cf-label{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;}
+.cf-value{font-size:13px;color:var(--text-1);}
+.cf-value a{color:var(--blue-light);text-decoration:none;}
+.cf-value a:hover{text-decoration:underline;}
+.cf-input,.cf-select,.cf-textarea{
+  width:100%;background:var(--surface-r);border:1px solid var(--border);
+  border-radius:6px;padding:8px 10px;
+  color:var(--text-1);font-family:'DM Sans',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;margin-top:2px;
+}
+.cf-input:focus,.cf-select:focus,.cf-textarea:focus{border-color:var(--blue-light);}
+.cf-textarea{resize:vertical;min-height:80px;}
+.card-foot{
+  padding:16px 24px;border-top:1px solid var(--border);
+  display:flex;gap:10px;justify-content:flex-end;
+  position:sticky;bottom:0;background:var(--surface-c);
+}
+
+/* ── SETTINGS PANEL ── */
+.settings-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(4,10,25,.88);z-index:300;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(5px);
+}
+.settings-overlay.open{display:flex;}
+.settings-panel{
+  background:var(--surface-c);border:1px solid var(--border);
+  border-radius:16px;width:560px;max-width:96vw;
+  max-height:90vh;overflow-y:auto;
+  box-shadow:0 40px 120px rgba(0,0,0,.7);
+}
+.sp-head{
+  padding:18px 22px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sp-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;}
+.sp-body{padding:22px;}
+.sp-section{margin-bottom:22px;}
+.sp-section-title{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border-l);}
+.sp-row{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.sp-label{font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.07em;}
+.sp-input{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;padding:9px 12px;
+  color:var(--text-1);font-family:'DM Sans',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;width:100%;
+}
+.sp-input:focus{border-color:var(--blue-light);}
+.sp-hint{font-size:11px;color:var(--text-3);margin-top:3px;}
+.info-box{background:rgba(37,99,235,.09);border:1px solid rgba(37,99,235,.25);border-radius:8px;padding:11px 14px;font-size:12px;color:var(--blue-pale);line-height:1.65;margin-top:8px;}
+.warn-box{background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:11px 14px;font-size:12px;color:#fcd34d;line-height:1.65;margin-top:8px;}
+.sp-msg{margin-top:10px;font-size:12px;color:var(--text-3);}
+.sp-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:24px;right:24px;z-index:999;
+  background:var(--surface-c);border:1px solid var(--border);
+  border-radius:10px;padding:12px 18px;
+  font-size:13px;color:var(--text-1);
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  transform:translateY(80px);opacity:0;
+  transition:all .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:none;display:flex;align-items:center;gap:8px;
+}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-color:rgba(16,185,129,.4);}
+.toast.err{border-color:rgba(239,68,68,.4);}
+
+/* ── EMPTY ── */
+.empty-state{
+  text-align:center;padding:60px 20px;
+  color:var(--text-3);font-size:13px;
+}
+
+/* ── SETUP GUIDE ── */
+.guide-card{
+  background:var(--surface-c);border:1px solid var(--border-l);
+  border-radius:12px;padding:22px 24px;margin-bottom:12px;
+}
+.g-step{display:flex;gap:14px;margin-bottom:18px;}
+.g-num{width:26px;height:26px;border-radius:50%;background:var(--blue-rich);color:#fff;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.g-body h4{font-size:13px;font-weight:600;margin-bottom:4px;}
+.g-body p{font-size:12px;color:var(--text-2);line-height:1.65;}
+.g-body code{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;color:var(--accent);font-family:monospace;}
+.code-block{background:var(--navy);border:1px solid var(--border);border-radius:7px;padding:10px 13px;margin-top:8px;font-family:monospace;font-size:11px;color:var(--blue-pale);line-height:1.7;white-space:pre-wrap;word-break:break-all;}
+
+@media(max-width:700px){
+  .card-grid{grid-template-columns:1fr;}
+  header{padding:0 14px;}
+  .toolbar{padding:8px 14px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">BIZ DEV <span>·</span> 2026</div>
+  <div class="header-right">
+    <div class="conn-pill">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span id="conn-txt">Local mode</span>
+    </div>
+    <button class="btn btn-outline" onclick="openSettings()">⚙ Settings</button>
+    <button class="btn btn-blue" onclick="addNewRow()">+ New Record</button>
+  </div>
+</header>
+
+<!-- ── TOOLBAR ── -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" id="search" placeholder="Search company, contact, email…" oninput="applyFilters()">
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Filter:</span>
+    <select class="fsel" id="f-listatus" onchange="applyFilters()">
+      <option value="">LI Status</option>
+      <option>Not Contacted</option>
+      <option>Connected</option>
+      <option>InMail Sent</option>
+      <option>Replied</option>
+    </select>
+    <select class="fsel" id="f-liplatform" onchange="applyFilters()">
+      <option value="">LI Platform</option>
+      <option>LinkedIn</option>
+      <option>LinkedIn Recruiter</option>
+      <option>Both</option>
+    </select>
+    <select class="fsel" id="f-lilir" onchange="applyFilters()">
+      <option value="">LI or LIR</option>
+      <option>LI</option>
+      <option>LIR</option>
+      <option>Both</option>
+      <option>Neither</option>
+    </select>
+    <select class="fsel" id="f-invenias" onchange="applyFilters()">
+      <option value="">Invenias</option>
+      <option>Yes</option>
+      <option>No</option>
+    </select>
+    <button class="btn btn-outline" onclick="clearFilters()" style="font-size:11px;padding:6px 10px">✕ Clear</button>
+  </div>
+  <div class="toolbar-right">
+    <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+  </div>
+</div>
+
+<div class="rec-count" id="rec-count"></div>
+
+<!-- ── DATA TABLE ── -->
+<div class="table-container">
+  <table id="main-table">
+    <colgroup>
+      <col class="c-company"><col class="c-contact"><col class="c-title">
+      <col class="c-tel"><col class="c-email"><col class="c-listatus">
+      <col class="c-liplatform"><col class="c-lilir"><col class="c-invenias">
+      <col class="c-notes"><col class="c-actions">
+    </colgroup>
+    <thead>
+      <tr>
+        <th onclick="sortBy('companyName')">Company Name <span class="si" id="sh-companyName">↕</span></th>
+        <th onclick="sortBy('contactName')">Contact Name <span class="si" id="sh-contactName">↕</span></th>
+        <th onclick="sortBy('title')">Title <span class="si" id="sh-title">↕</span></th>
+        <th onclick="sortBy('telNumber')">Tel Number <span class="si" id="sh-telNumber">↕</span></th>
+        <th onclick="sortBy('email')">Email <span class="si" id="sh-email">↕</span></th>
+        <th onclick="sortBy('liStatus')">LI Status <span class="si" id="sh-liStatus">↕</span></th>
+        <th onclick="sortBy('liPlatform')">LI Platform <span class="si" id="sh-liPlatform">↕</span></th>
+        <th onclick="sortBy('liOrLir')">LI or LIR <span class="si" id="sh-liOrLir">↕</span></th>
+        <th onclick="sortBy('invenias')">Invenias <span class="si" id="sh-invenias">↕</span></th>
+        <th onclick="sortBy('notes')">Notes <span class="si" id="sh-notes">↕</span></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+  <button class="new-row-btn" onclick="addNewRow()">
+    <span style="font-size:16px;color:var(--blue-light)">+</span> Add new record
+  </button>
+</div>
+
+<!-- ── CARD MODAL ── -->
+<div class="overlay" id="card-overlay">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-avatar" id="card-avatar">?</div>
+      <div class="card-title-wrap">
+        <div class="card-company" id="card-company">—</div>
+        <div class="card-contact" id="card-contact">—</div>
+      </div>
+      <button class="card-x" onclick="closeCard()">✕</button>
+    </div>
+    <div class="card-body" id="card-body"></div>
+    <div class="card-foot">
+      <button class="btn btn-danger" id="card-del-btn">Delete</button>
+      <button class="btn btn-ghost" onclick="closeCard()">Close</button>
+      <button class="btn btn-blue" id="card-save-btn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SETTINGS PANEL ── -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-panel">
+    <div class="sp-head">
+      <div class="sp-title">⚙ Settings &amp; SharePoint Connection</div>
+      <button class="card-x" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="sp-body">
+
+      <div class="sp-section">
+        <div class="sp-section-title">Microsoft / SharePoint Connection</div>
+        <div class="sp-row">
+          <div class="sp-label">Azure Client ID</div>
+          <input class="sp-input" id="s-cid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          <div class="sp-hint">From Azure portal → App registrations → Application (client) ID</div>
+        </div>
+        <div class="sp-row">
+          <div class="sp-label">Azure Tenant ID</div>
+          <input class="sp-input" id="s-tid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          <div class="sp-hint">From Azure portal → App registrations → Directory (tenant) ID</div>
+        </div>
+        <div class="sp-row">
+          <div class="sp-label">SharePoint Site URL</div>
+          <input class="sp-input" id="s-site" value="https://corporaterecruiters2.sharepoint.com">
+          <div class="sp-hint">Your SharePoint root URL — already pre-filled</div>
+        </div>
+        <div class="sp-row">
+          <div class="sp-label">SharePoint List Name</div>
+          <input class="sp-input" id="s-list" value="Claude test DB  Vancouver Tech  HW SW AI companies 2026  Copy">
+          <div class="sp-hint">Exact name of your SharePoint list — already pre-filled</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-blue" onclick="msSignIn()">🪟 Sign in with Microsoft</button>
+          <button class="btn btn-outline" onclick="msTest()">Test Connection</button>
+          <button class="btn btn-outline" onclick="saveSettings()">Save Settings</button>
+        </div>
+        <div class="sp-msg" id="sp-msg"></div>
+        <div class="info-box" style="margin-top:12px">
+          <strong>First time setup?</strong> You need to register an app in Azure before signing in. See the Setup Guide below for exact steps. Once connected, all changes sync live to your SharePoint list in real time.
+        </div>
+      </div>
+
+      <div class="sp-section">
+        <div class="sp-section-title">📋 Setup Guide — Azure App Registration</div>
+        <div class="g-step">
+          <div class="g-num">1</div>
+          <div class="g-body">
+            <h4>Register app in Azure (5 min, one-time)</h4>
+            <p>Go to <a href="https://portal.azure.com" target="_blank" style="color:var(--blue-light)">portal.azure.com</a> → search "App registrations" → New registration.</p>
+            <div class="code-block">Name: Biz Dev 2026
+Account types: This organizational directory only
+Redirect URI: Single-page application (SPA)
+URI value: (paste the URL of this HTML file)</div>
+            <p style="margin-top:8px">After registering, copy the <strong>Application (client) ID</strong> and <strong>Directory (tenant) ID</strong> into the fields above.</p>
+          </div>
+        </div>
+        <div class="g-step">
+          <div class="g-num">2</div>
+          <div class="g-body">
+            <h4>Grant SharePoint permissions</h4>
+            <p>In your app registration → API permissions → Add → Microsoft Graph → Delegated:</p>
+            <div class="code-block">Sites.ReadWrite.All
+Files.ReadWrite.All</div>
+            <p style="margin-top:6px">Click Grant admin consent if you have admin rights. If not, ask your M365 admin — it's a one-click approval for them.</p>
+          </div>
+        </div>
+        <div class="g-step">
+          <div class="g-num">3</div>
+          <div class="g-body">
+            <h4>Sign in and test</h4>
+            <p>Enter your Client ID and Tenant ID above → click <strong>Sign in with Microsoft</strong> → your normal M365 login window appears → click <strong>Test Connection</strong> to confirm.</p>
+          </div>
+        </div>
+        <div class="g-step">
+          <div class="g-num">4</div>
+          <div class="g-body">
+            <h4>Share with your team</h4>
+            <p>Upload this HTML file to your SharePoint document library. Share the link with colleagues — they sign in with their own M365 account. Everyone reads and writes to the same live list.</p>
+            <div class="warn-box">Each team member signs in with their own Microsoft account — no shared passwords needed.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="sp-foot">
+      <button class="btn btn-ghost" onclick="closeSettings()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+let records   = [];       // all records from SP or local demo
+let filtered  = [];       // after search/filter
+let sortCol   = 'companyName';
+let sortDir   = 1;
+let editingId = null;     // currently open card
+let msToken   = null;
+let cfg       = {};
+let spSiteId  = null;
+let spListId  = null;
+
+// SharePoint pre-filled values
+const SP_SITE = 'https://corporaterecruiters2.sharepoint.com';
+const SP_LIST = 'Claude test DB  Vancouver Tech  HW SW AI companies 2026  Copy';
+
+const FIELDS = [
+  {key:'companyName',  label:'Company Name',   type:'text'},
+  {key:'contactName',  label:'Contact Name',    type:'text'},
+  {key:'title',        label:'Title',           type:'text'},
+  {key:'telNumber',    label:'Tel Number',      type:'text'},
+  {key:'email',        label:'Email',           type:'email'},
+  {key:'liStatus',     label:'LI Status',       type:'select', opts:['','Not Contacted','Connected','InMail Sent','Replied']},
+  {key:'liPlatform',   label:'LI Platform',     type:'select', opts:['','LinkedIn','LinkedIn Recruiter','Both']},
+  {key:'liOrLir',      label:'LI or LIR',       type:'select', opts:['','LI','LIR','Both','Neither']},
+  {key:'invenias',     label:'Invenias',         type:'select', opts:['','Yes','No']},
+  {key:'notes',        label:'Notes',            type:'textarea'},
+];
+
+// SP field name mapping (SharePoint internal names may differ)
+const SP_MAP = {
+  companyName: 'field_0',
+  contactName: 'field_1',
+  title:       'Title',
+  telNumber:   'field_3',
+  email:       'field_4',
+  liStatus:    'field_7',
+  liPlatform:  'field_5',
+  liOrLir:     'field_6',
+  invenias:    'field_8',
+  notes:       'field_9',
+};
+
+const LI_STATUS_COLORS = {
+  'Not Contacted': {c:'#6b7280', bg:'rgba(107,114,128,.13)'},
+  'Connected':     {c:'#10b981', bg:'rgba(16,185,129,.13)'},
+  'InMail Sent':   {c:'#f59e0b', bg:'rgba(245,158,11,.13)'},
+  'Replied':       {c:'#6366f1', bg:'rgba(99,102,241,.13)'},
+};
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  loadCfg();
+  populateSettingsForm();
+  checkMsToken();
+  if (!msToken) loadDemoData();
+});
+
+function loadCfg() {
+  cfg = JSON.parse(localStorage.getItem('vtdb_cfg') || '{}');
+  cfg.siteUrl  = cfg.siteUrl  || SP_SITE;
+  cfg.listName = cfg.listName || SP_LIST;
+}
+function saveCfg() { localStorage.setItem('vtdb_cfg', JSON.stringify(cfg)); }
+
+// ══════════════════════════════════════════════════════
+//  DEMO DATA (shown before SharePoint connected)
+// ══════════════════════════════════════════════════════
+function loadDemoData() {
+  records = [
+    {id:'d1', companyName:'Kyte Dynamics',    contactName:'Sarah Chen',      title:'CEO',           telNumber:'604-555-0101', email:'sarah@kytedynamics.com',  liStatus:'Connected',     liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', notes:'Series A, AI logistics platform'},
+    {id:'d2', companyName:'Texavie',          contactName:'Peyman Servati',  title:'Co-Founder',    telNumber:'',             email:'peyman@texavie.com',      liStatus:'InMail Sent',   liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  notes:'Wearable tech, seed stage'},
+    {id:'d3', companyName:'Humanoid',         contactName:'',                title:'',              telNumber:'',             email:'',                        liStatus:'Not Contacted', liPlatform:'',                   liOrLir:'',    invenias:'No',  notes:''},
+    {id:'d4', companyName:'D-Wave',           contactName:'Alan Baratz',     title:'CEO',           telNumber:'604-555-0199', email:'abaratz@dwavesys.com',    liStatus:'Replied',       liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', notes:'Quantum computing, public company'},
+    {id:'d5', companyName:'Arla Technologies',contactName:'Marcus Webb',     title:'Founder & CEO', telNumber:'778-555-0142', email:'marcus@arlatech.ca',      liStatus:'Connected',     liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  notes:'CleanTech, pre-seed'},
+  ];
+  applyFilters();
+  showToast('Running in demo mode — connect SharePoint in Settings to load live data', 'info');
+}
+
+// ══════════════════════════════════════════════════════
+//  MICROSOFT AUTH
+// ══════════════════════════════════════════════════════
+function msSignIn() {
+  const cid = document.getElementById('s-cid').value.trim() || cfg.clientId;
+  const tid = document.getElementById('s-tid').value.trim() || cfg.tenantId;
+  if (!cid || !tid) { spMsg('Enter your Azure Client ID and Tenant ID first.', 'warn'); return; }
+  const ru = encodeURIComponent('https://timswanson83.github.io/auth');
+  const sc = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email');
+  const st = encodeURIComponent(location.href.split('#')[0]);
+  location.href = `https://login.microsoftonline.com/${tid}/oauth2/v2.0/authorize?client_id=${cid}&response_type=token&redirect_uri=${ru}&scope=${sc}&response_mode=fragment&state=${st}`;
+}
+
+function checkMsToken() {
+  // If we landed on localhost with a token in the hash, extract and store it
+  // then redirect back to the app file location stored in localStorage
+  if (location.hostname === 'localhost' && location.hash && location.hash.includes('access_token')) {
+    const p = new URLSearchParams(location.hash.substring(1));
+    const token = p.get('access_token');
+    if (token) {
+      localStorage.setItem('vtdb_tk', token);
+      // Redirect back to the app
+      const returnUrl = localStorage.getItem('vtdb_return') || '';
+      if (returnUrl) { location.href = returnUrl; return; }
+    }
+  }
+  // Normal flow — check for token in hash (when redirect URI matches current page)
+  if (location.hash && location.hash.includes('access_token')) {
+    const p = new URLSearchParams(location.hash.substring(1));
+    msToken = p.get('access_token');
+    if (msToken) { localStorage.setItem('vtdb_tk', msToken); setConn(true); }
+    history.replaceState({}, document.title, location.pathname);
+    loadFromSharePoint();
+  } else {
+    const t = localStorage.getItem('vtdb_tk');
+    if (t) { msToken = t; setConn(true); loadFromSharePoint(); }
+  }
+}
+
+async function msTest() {
+  spMsg('Testing…', 'info');
+  if (!msToken) { spMsg('Not signed in. Click Sign in with Microsoft first.', 'warn'); return; }
+  try {
+    const r = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + msToken } });
+    if (r.ok) {
+      const m = await r.json();
+      spMsg(`✅ Connected as ${m.displayName} (${m.mail || m.userPrincipalName})`, 'ok');
+      setConn(true);
+    } else {
+      const e = await r.json();
+      if (e.error?.code === 'InvalidAuthenticationToken') {
+        msToken = null; localStorage.removeItem('vtdb_tk'); setConn(false);
+        spMsg('Session expired — please sign in again.', 'warn');
+      } else spMsg('Error: ' + (e.error?.message || r.status), 'err');
+    }
+  } catch(e) { spMsg('Network error: ' + e.message, 'err'); }
+}
+
+function setConn(on) {
+  const d = document.getElementById('conn-dot'), t = document.getElementById('conn-txt');
+  if (!d) return;
+  d.classList.toggle('on', on);
+  t.textContent = on ? 'SharePoint live' : 'Local mode';
+}
+
+// ══════════════════════════════════════════════════════
+//  SHAREPOINT — READ
+// ══════════════════════════════════════════════════════
+async function loadFromSharePoint() {
+  if (!msToken) return;
+  try {
+    // Use stored IDs if available
+    if (cfg.siteId && cfg.listId) {
+      spSiteId = cfg.siteId;
+      spListId = cfg.listId;
+      await refreshRecords();
+      return;
+    }
+    // Otherwise discover them
+    const siteUrl  = cfg.siteUrl || SP_SITE;
+    const hostname = new URL(siteUrl).hostname;
+    const sitePath = new URL(siteUrl).pathname;
+    const siteR    = await gFetch(`https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}`);
+    if (!siteR.ok) { showToast('Could not find SharePoint site — check URL in Settings', 'err'); return; }
+    const site = await siteR.json();
+    spSiteId = site.id;
+    const listName = cfg.listName || SP_LIST;
+    const listsR   = await gFetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists?$select=id,displayName`);
+    const listsData= await listsR.json();
+    const found    = (listsData.value||[]).find(l => l.displayName === listName);
+    if (!found) { showToast('SharePoint list not found — check list name in Settings', 'err'); return; }
+    spListId = found.id;
+    await refreshRecords();
+  } catch(e) {
+    showToast('SharePoint connection error: ' + e.message, 'err');
+    if (!records.length) loadDemoData();
+  }
+}
+
+async function refreshRecords() {
+  if (!msToken || !spSiteId || !spListId) return;
+  try {
+    const r = await gFetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items?expand=fields&$top=2000`);
+    const data = await r.json();
+    records = (data.value || []).map(item => ({
+      id:          item.id,
+      companyName: item.fields[SP_MAP.companyName] || '',
+      contactName: item.fields[SP_MAP.contactName] || '',
+      title:       item.fields[SP_MAP.title]       || '',
+      telNumber:   item.fields[SP_MAP.telNumber]   || '',
+      email:       item.fields[SP_MAP.email]       || '',
+      liStatus:    item.fields[SP_MAP.liStatus]    || '',
+      liPlatform:  item.fields[SP_MAP.liPlatform]  || '',
+      liOrLir:     item.fields[SP_MAP.liOrLir]     || '',
+      invenias:    item.fields[SP_MAP.invenias]    || '',
+      notes:       item.fields[SP_MAP.notes]       || '',
+    }));
+    applyFilters();
+    showToast(`Loaded ${records.length} records from SharePoint`, 'ok');
+  } catch(e) {
+    showToast('Failed to load records: ' + e.message, 'err');
+  }
+}
+
+async function gFetch(url) {
+  return fetch(url, { headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' } });
+}
+
+// ══════════════════════════════════════════════════════
+//  SHAREPOINT — WRITE
+// ══════════════════════════════════════════════════════
+function toSpFields(rec) {
+  const f = {};
+  Object.entries(SP_MAP).forEach(([k, spk]) => { f[spk] = rec[k] || ''; });
+  return f;
+}
+
+async function spCreate(rec) {
+  if (!msToken || !spSiteId || !spListId) return null;
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: toSpFields(rec) })
+  });
+  const data = await r.json();
+  return data.id || null;
+}
+
+async function spUpdate(id, rec) {
+  if (!msToken || !spSiteId || !spListId) return;
+  await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}/fields`, {
+    method: 'PATCH',
+    headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify(toSpFields(rec))
+  });
+}
+
+async function spDelete(id) {
+  if (!msToken || !spSiteId || !spListId) return;
+  await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + msToken }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  FILTER & SORT
+// ══════════════════════════════════════════════════════
+function applyFilters() {
+  const q   = (document.getElementById('search')?.value || '').toLowerCase();
+  const fls = document.getElementById('f-listatus')?.value  || '';
+  const flp = document.getElementById('f-liplatform')?.value|| '';
+  const fll = document.getElementById('f-lilir')?.value     || '';
+  const fli = document.getElementById('f-invenias')?.value  || '';
+
+  filtered = records.filter(r => {
+    const txt = [r.companyName, r.contactName, r.title, r.email, r.notes].join(' ').toLowerCase();
+    return (!q   || txt.includes(q))
+        && (!fls || r.liStatus   === fls)
+        && (!flp || r.liPlatform === flp)
+        && (!fll || r.liOrLir    === fll)
+        && (!fli || r.invenias   === fli);
+  });
+
+  doSort();
+}
+
+function doSort() {
+  filtered = [...filtered].sort((a, b) => {
+    const av = (a[sortCol] || '').toLowerCase();
+    const bv = (b[sortCol] || '').toLowerCase();
+    if (av < bv) return -sortDir;
+    if (av > bv) return sortDir;
+    return 0;
+  });
+  renderTable();
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('thead th .si').forEach(e => e.textContent = '↕');
+  document.querySelectorAll('thead th').forEach(e => e.classList.remove('sorted'));
+  const h = document.getElementById('sh-' + col);
+  if (h) { h.textContent = sortDir === 1 ? '↑' : '↓'; h.closest('th').classList.add('sorted'); }
+  doSort();
+}
+
+function clearFilters() {
+  document.getElementById('search').value = '';
+  ['f-listatus','f-liplatform','f-lilir','f-invenias'].forEach(id => document.getElementById(id).value = '');
+  applyFilters();
+}
+
+// ══════════════════════════════════════════════════════
+//  RENDER TABLE
+// ══════════════════════════════════════════════════════
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  const cnt   = document.getElementById('rec-count');
+  if (!tbody) return;
+
+  cnt.textContent = filtered.length === records.length
+    ? `${records.length} records`
+    : `${filtered.length} of ${records.length} records`;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state">No records match your search or filters</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => {
+    const ls  = LI_STATUS_COLORS[r.liStatus] || {c:'var(--text-3)', bg:'transparent'};
+    const ini = initials(r.companyName);
+    const inv = r.invenias === 'Yes'
+      ? `<span class="badge" style="color:#10b981;background:rgba(16,185,129,.12)"><span class="bdot" style="background:#10b981"></span>Yes</span>`
+      : r.invenias === 'No'
+      ? `<span class="badge" style="color:var(--text-3);background:rgba(107,114,128,.1)">No</span>`
+      : '—';
+    const lisBadge = r.liStatus
+      ? `<span class="badge" style="color:${ls.c};background:${ls.bg}"><span class="bdot" style="background:${ls.c}"></span>${r.liStatus}</span>`
+      : '—';
+
+    return `<tr ondblclick="openCard('${r.id}')" title="Double-click to open full record">
+      <td><div class="cell-display company" onclick="startInlineEdit(this,'${r.id}','companyName')">${esc(r.companyName)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.companyName)}" onblur="saveInlineEdit(this,'${r.id}','companyName')" onkeydown="inlineKey(event,this,'${r.id}','companyName')"></div></td>
+      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','contactName')">${esc(r.contactName)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.contactName)}" onblur="saveInlineEdit(this,'${r.id}','contactName')" onkeydown="inlineKey(event,this,'${r.id}','contactName')"></div></td>
+      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','title')">${esc(r.title)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.title)}" onblur="saveInlineEdit(this,'${r.id}','title')" onkeydown="inlineKey(event,this,'${r.id}','title')"></div></td>
+      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','telNumber')">${esc(r.telNumber)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.telNumber)}" onblur="saveInlineEdit(this,'${r.id}','telNumber')" onkeydown="inlineKey(event,this,'${r.id}','telNumber')"></div></td>
+      <td><div class="cell-display email" onclick="startInlineEdit(this,'${r.id}','email')">${r.email?`<a href="mailto:${esc(r.email)}" onclick="event.stopPropagation()">${esc(r.email)}</a>`:'—'}</div>
+          <div class="cell-edit"><input type="email" value="${esc(r.email)}" onblur="saveInlineEdit(this,'${r.id}','email')" onkeydown="inlineKey(event,this,'${r.id}','email')"></div></td>
+      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','liStatus')">${lisBadge}</div>
+          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','liStatus')" onchange="saveInlineEdit(this,'${r.id}','liStatus')">
+            ${['','Not Contacted','Connected','InMail Sent','Replied'].map(o=>`<option${o===r.liStatus?' selected':''}>${o}</option>`).join('')}
+          </select></div></td>
+      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','liPlatform')">${esc(r.liPlatform)||'—'}</div>
+          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','liPlatform')" onchange="saveInlineEdit(this,'${r.id}','liPlatform')">
+            ${['','LinkedIn','LinkedIn Recruiter','Both'].map(o=>`<option${o===r.liPlatform?' selected':''}>${o}</option>`).join('')}
+          </select></div></td>
+      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','liOrLir')">${esc(r.liOrLir)||'—'}</div>
+          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','liOrLir')" onchange="saveInlineEdit(this,'${r.id}','liOrLir')">
+            ${['','LI','LIR','Both','Neither'].map(o=>`<option${o===r.liOrLir?' selected':''}>${o}</option>`).join('')}
+          </select></div></td>
+      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','invenias')">${inv}</div>
+          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','invenias')" onchange="saveInlineEdit(this,'${r.id}','invenias')">
+            ${['','Yes','No'].map(o=>`<option${o===r.invenias?' selected':''}>${o}</option>`).join('')}
+          </select></div></td>
+      <td><div class="cell-display" style="max-width:220px;overflow:hidden;text-overflow:ellipsis" onclick="startInlineEdit(this,'${r.id}','notes')" title="${esc(r.notes)}">${esc(r.notes)||'—'}</div>
+          <div class="cell-edit"><textarea onblur="saveInlineEdit(this,'${r.id}','notes')">${esc(r.notes)}</textarea></div></td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn view" onclick="openCard('${r.id}')" title="Open full record">⤢</button>
+          <button class="icon-btn del"  onclick="deleteRecord('${r.id}')" title="Delete">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+//  INLINE EDITING
+// ══════════════════════════════════════════════════════
+function startInlineEdit(displayEl, id, field) {
+  const td = displayEl.closest('td');
+  td.classList.add('active-edit');
+  const input = td.querySelector('.cell-edit input, .cell-edit textarea');
+  if (input) { input.focus(); input.select(); }
+  td.closest('tr').classList.add('editing-row');
+}
+
+function startInlineEditSelect(displayEl, id, field) {
+  const td = displayEl.closest('td');
+  td.classList.add('active-edit');
+  const sel = td.querySelector('.cell-edit select');
+  if (sel) sel.focus();
+  td.closest('tr').classList.add('editing-row');
+}
+
+function inlineKey(e, el, id, field) {
+  if (e.key === 'Enter') { e.preventDefault(); saveInlineEdit(el, id, field); }
+  if (e.key === 'Escape') { cancelInlineEdit(el.closest('td')); }
+}
+
+function cancelInlineEdit(td) {
+  td.classList.remove('active-edit');
+  td.closest('tr').classList.remove('editing-row');
+}
+
+async function saveInlineEdit(el, id, field) {
+  const td  = el.closest('td');
+  const rec = records.find(r => r.id === id);
+  if (!rec) { cancelInlineEdit(td); return; }
+  const newVal = el.value;
+  rec[field] = newVal;
+  cancelInlineEdit(td);
+  // Update display
+  const display = td.querySelector('.cell-display');
+  if (display) {
+    if (field === 'liStatus') {
+      const ls = LI_STATUS_COLORS[newVal] || {c:'var(--text-3)',bg:'transparent'};
+      display.innerHTML = newVal ? `<span class="badge" style="color:${ls.c};background:${ls.bg}"><span class="bdot" style="background:${ls.c}"></span>${esc(newVal)}</span>` : '—';
+    } else if (field === 'invenias') {
+      display.innerHTML = newVal === 'Yes'
+        ? `<span class="badge" style="color:#10b981;background:rgba(16,185,129,.12)"><span class="bdot" style="background:#10b981"></span>Yes</span>`
+        : newVal === 'No' ? `<span class="badge" style="color:var(--text-3);background:rgba(107,114,128,.1)">No</span>` : '—';
+    } else if (field === 'email') {
+      display.innerHTML = newVal ? `<a href="mailto:${esc(newVal)}" onclick="event.stopPropagation()">${esc(newVal)}</a>` : '—';
+    } else {
+      display.textContent = newVal || '—';
+    }
+  }
+  // Sync to SharePoint
+  if (msToken && spSiteId && spListId && !id.startsWith('d')) {
+    try { await spUpdate(id, rec); showToast('Saved', 'ok'); }
+    catch(e) { showToast('Save failed: ' + e.message, 'err'); }
+  } else if (id.startsWith('d')) {
+    showToast('Demo mode — connect SharePoint to save changes', 'info');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  ADD NEW ROW
+// ══════════════════════════════════════════════════════
+async function addNewRow() {
+  const rec = {
+    id: 'new_' + Date.now(),
+    companyName:'', contactName:'', title:'', telNumber:'',
+    email:'', liStatus:'Not Contacted', liPlatform:'', liOrLir:'', invenias:'No', notes:''
+  };
+  // If connected to SP, create first then get real ID
+  if (msToken && spSiteId && spListId) {
+    try {
+      const newId = await spCreate(rec);
+      if (newId) rec.id = newId;
+      showToast('New record created in SharePoint', 'ok');
+    } catch(e) { showToast('Failed to create record: ' + e.message, 'err'); }
+  } else {
+    showToast('Demo mode — record added locally', 'info');
+  }
+  records.unshift(rec);
+  applyFilters();
+  // Focus first cell of new row
+  setTimeout(() => {
+    const firstCell = document.querySelector('tbody tr:first-child td:first-child .cell-display');
+    if (firstCell) firstCell.click();
+  }, 100);
+}
+
+// ══════════════════════════════════════════════════════
+//  DELETE
+// ══════════════════════════════════════════════════════
+async function deleteRecord(id) {
+  if (!confirm('Delete this record? This cannot be undone.')) return;
+  records = records.filter(r => r.id !== id);
+  applyFilters();
+  if (msToken && spSiteId && spListId && !id.startsWith('d') && !id.startsWith('new_')) {
+    try { await spDelete(id); showToast('Record deleted', 'ok'); }
+    catch(e) { showToast('Delete failed: ' + e.message, 'err'); }
+  } else {
+    showToast('Record removed', 'ok');
+  }
+  closeCard();
+}
+
+// ══════════════════════════════════════════════════════
+//  CARD MODAL
+// ══════════════════════════════════════════════════════
+function openCard(id) {
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  editingId = id;
+
+  document.getElementById('card-avatar').textContent  = initials(rec.companyName);
+  document.getElementById('card-company').textContent = rec.companyName || '—';
+  document.getElementById('card-contact').textContent = [rec.contactName, rec.title].filter(Boolean).join(' · ') || '—';
+
+  document.getElementById('card-body').innerHTML = `
+    <div class="card-grid">
+      ${FIELDS.map(f => {
+        const val = rec[f.key] || '';
+        let input = '';
+        if (f.type === 'select') {
+          input = `<select class="cf-select" id="cf-${f.key}">
+            ${f.opts.map(o => `<option${o===val?' selected':''}>${o}</option>`).join('')}
+          </select>`;
+        } else if (f.type === 'textarea') {
+          input = `<textarea class="cf-textarea" id="cf-${f.key}">${esc(val)}</textarea>`;
+        } else if (f.type === 'email') {
+          input = `<input class="cf-input" type="email" id="cf-${f.key}" value="${esc(val)}">`;
+        } else {
+          input = `<input class="cf-input" type="text" id="cf-${f.key}" value="${esc(val)}">`;
+        }
+        const full = f.type === 'textarea' ? ' full' : '';
+        return `<div class="card-field${full}">
+          <div class="cf-label">${f.label}</div>
+          ${input}
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  document.getElementById('card-del-btn').onclick  = () => deleteRecord(id);
+  document.getElementById('card-save-btn').onclick = () => saveCard(id);
+  document.getElementById('card-overlay').classList.add('open');
+}
+
+async function saveCard(id) {
+  const rec = records.find(r => r.id === id);
+  if (!rec) return;
+  FIELDS.forEach(f => {
+    const el = document.getElementById('cf-' + f.key);
+    if (el) rec[f.key] = el.value;
+  });
+  document.getElementById('card-company').textContent = rec.companyName || '—';
+  document.getElementById('card-contact').textContent = [rec.contactName, rec.title].filter(Boolean).join(' · ') || '—';
+  document.getElementById('card-avatar').textContent  = initials(rec.companyName);
+
+  if (msToken && spSiteId && spListId && !id.startsWith('d') && !id.startsWith('new_')) {
+    try { await spUpdate(id, rec); showToast('Record saved to SharePoint', 'ok'); }
+    catch(e) { showToast('Save failed: ' + e.message, 'err'); }
+  } else {
+    showToast('Saved locally (demo mode)', 'info');
+  }
+  applyFilters();
+  closeCard();
+}
+
+function closeCard() {
+  document.getElementById('card-overlay').classList.remove('open');
+  editingId = null;
+}
+
+// ══════════════════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════════════════
+function openSettings()  { populateSettingsForm(); document.getElementById('settings-overlay').classList.add('open'); }
+function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
+
+function populateSettingsForm() {
+  const g = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
+  g('s-cid',  cfg.clientId || '');
+  g('s-tid',  cfg.tenantId || '');
+  g('s-site', cfg.siteUrl  || SP_SITE);
+  g('s-list', cfg.listName || SP_LIST);
+}
+
+function saveSettings() {
+  cfg.clientId = document.getElementById('s-cid').value.trim();
+  cfg.tenantId = document.getElementById('s-tid').value.trim();
+  cfg.siteUrl  = document.getElementById('s-site').value.trim();
+  cfg.listName = document.getElementById('s-list').value.trim();
+  saveCfg();
+  spMsg('Settings saved.', 'ok');
+}
+
+function spMsg(msg, type) {
+  const el = document.getElementById('sp-msg'); if (!el) return;
+  const c  = {ok:'#10b981', warn:'#f59e0b', err:'#ef4444', info:'var(--text-3)'};
+  el.style.color = c[type] || 'var(--text-3)';
+  el.textContent = msg;
+}
+
+// ══════════════════════════════════════════════════════
+//  EXPORT CSV
+// ══════════════════════════════════════════════════════
+function exportCSV() {
+  const headers = FIELDS.map(f => f.label).join(',');
+  const rows    = filtered.map(r => FIELDS.map(f => `"${(r[f.key]||'').replace(/"/g,'""')}"`).join(','));
+  const csv     = [headers, ...rows].join('\n');
+  const blob    = new Blob([csv], {type:'text/csv'});
+  const a       = document.createElement('a');
+  a.href        = URL.createObjectURL(blob);
+  a.download    = `biz-dev-2026-${today()}.csv`;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 200);
+}
+
+// ══════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `toast ${type} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════
+function initials(n) {
+  if (!n) return '?';
+  const w = n.trim().split(/\s+/);
+  return w.length >= 2 ? (w[0][0] + w[w.length-1][0]).toUpperCase() : n[0].toUpperCase();
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+function esc(s)  { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Close modals on overlay click
+document.addEventListener('click', e => {
+  if (e.target.id === 'card-overlay')     closeCard();
+  if (e.target.id === 'settings-overlay') closeSettings();
+});
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeCard(); closeSettings(); }
+});
+</script>
+</body>
+</html>
