@@ -7,19 +7,18 @@
 </style>
 </head>
 <body>
-<p>✅ Signing you in...</p>
+<p>✅ Completing sign-in...</p>
 <script>
-  if(location.hash && location.hash.includes('access_token')){
-    const params = new URLSearchParams(location.hash.substring(1));
-    const token = params.get('access_token');
-    const state = params.get('state');
-    if(token){
-      localStorage.setItem('vtdb_tk', token);
-      if(state){ location.href = decodeURIComponent(state) + '#vtdb_authed'; }
-      else { document.querySelector('p').textContent = '✅ Signed in — you can close this tab and return to the app.'; }
-    }
+  // PKCE flow — Microsoft returns a code and state via query params
+  const params = new URLSearchParams(location.search);
+  const code  = params.get('code');
+  const state = params.get('state');
+  if (code && state) {
+    // Redirect back to the app with the code so it can exchange for a token
+    const appUrl = decodeURIComponent(state);
+    location.href = appUrl + '?code=' + encodeURIComponent(code) + '&state=' + encodeURIComponent(state);
   } else {
-    document.querySelector('p').textContent = 'No token found — please try signing in again.';
+    document.querySelector('p').textContent = 'No auth code found — please try signing in again.';
   }
 </script>
 </body>
