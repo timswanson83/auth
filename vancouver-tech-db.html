@@ -926,12 +926,18 @@ async function spCreate(rec) {
 }
 
 async function spUpdate(id, rec) {
-  if (!msToken || !spSiteId || !spListId) return;
-  await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}/fields`, {
+  if (!spSiteId || !spListId) return;
+  msToken = await getValidToken();
+  if (!msToken) { showToast('Not signed in — please sign in again', 'err'); return; }
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}/fields`, {
     method: 'PATCH',
     headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' },
     body: JSON.stringify(toSpFields(rec))
   });
+  if (!r.ok) {
+    const e = await r.json().catch(()=>({}));
+    throw new Error(e?.error?.message || r.status);
+  }
 }
 
 async function spDelete(id) {
@@ -1117,7 +1123,7 @@ async function saveInlineEdit(el, id, field) {
     }
   }
   // Sync to SharePoint
-  if (msToken && spSiteId && spListId && !id.startsWith('d')) {
+  if (spSiteId && spListId && !id.startsWith('d')) {
     try { await spUpdate(id, rec); showToast('Saved', 'ok'); }
     catch(e) { showToast('Save failed: ' + e.message, 'err'); }
   } else if (id.startsWith('d')) {
