@@ -123,7 +123,8 @@ col.c-liplatform{width:130px;}
 col.c-lilir{width:130px;}
 col.c-invenias{width:110px;}
 col.c-notes{width:220px;}
-col.c-actions{width:70px;}
+col.c-consultant{width:110px;}
+col.c-followup{width:130px;}
 
 thead{position:sticky;top:0;z-index:10;}
 thead th{
@@ -410,6 +411,7 @@ td.active-edit .cell-edit{display:block;}
       <col class="c-company"><col class="c-contact"><col class="c-title">
       <col class="c-tel"><col class="c-email"><col class="c-listatus">
       <col class="c-liplatform"><col class="c-lilir"><col class="c-invenias">
+      <col class="c-consultant"><col class="c-followup">
       <col class="c-notes"><col class="c-actions">
     </colgroup>
     <thead>
@@ -423,6 +425,8 @@ td.active-edit .cell-edit{display:block;}
         <th onclick="sortBy('liPlatform')">LI Platform <span class="si" id="sh-liPlatform">↕</span></th>
         <th onclick="sortBy('liOrLir')">LI or LIR <span class="si" id="sh-liOrLir">↕</span></th>
         <th onclick="sortBy('invenias')">Invenias <span class="si" id="sh-invenias">↕</span></th>
+        <th onclick="sortBy('consultant')">Consultant <span class="si" id="sh-consultant">↕</span></th>
+        <th onclick="sortBy('followUpDate')">Follow-up Date <span class="si" id="sh-followUpDate">↕</span></th>
         <th onclick="sortBy('notes')">Notes <span class="si" id="sh-notes">↕</span></th>
         <th></th>
       </tr>
@@ -561,35 +565,43 @@ let cfg       = {};
 let spSiteId  = null;
 let spListId  = null;
 
-// SharePoint pre-filled values
-const SP_SITE = 'https://corporaterecruiters2.sharepoint.com';
-const SP_LIST = 'Claude test DB  Vancouver Tech  HW SW AI companies 2026  Copy';
+// SharePoint pre-filled values — hardcoded so no setup needed
+const SP_SITE    = 'https://corporaterecruiters2.sharepoint.com';
+const SP_LIST    = 'Biz Dev 2026';
+const SP_SITE_ID = 'corporaterecruiters2.sharepoint.com,c1d20f77-e3da-4b1d-9790-0ea3ad55bdd9,38238fc3-f360-47fd-aaa0-9263f44a782a';
+const SP_LIST_ID = 'fb966a42-11f0-4e3b-a4a1-73093b5b9315';
+const AZ_CLIENT  = '9a892d0e-8586-4946-b4f8-7e83827c1a63';
+const AZ_TENANT  = '8fb68b6a-0278-4e49-a0e3-2c0b90fd70a9';
 
 const FIELDS = [
-  {key:'companyName',  label:'Company Name',   type:'text'},
-  {key:'contactName',  label:'Contact Name',    type:'text'},
-  {key:'title',        label:'Title',           type:'text'},
-  {key:'telNumber',    label:'Tel Number',      type:'text'},
-  {key:'email',        label:'Email',           type:'email'},
-  {key:'liStatus',     label:'LI Status',       type:'select', opts:['','Not Contacted','Connected','InMail Sent','Replied']},
-  {key:'liPlatform',   label:'LI Platform',     type:'select', opts:['','LinkedIn','LinkedIn Recruiter','Both']},
-  {key:'liOrLir',      label:'LI or LIR',       type:'select', opts:['','LI','LIR','Both','Neither']},
-  {key:'invenias',     label:'Invenias',         type:'select', opts:['','Yes','No']},
-  {key:'notes',        label:'Notes',            type:'textarea'},
+  {key:'companyName',    label:'Company Name',    type:'text'},
+  {key:'contactName',    label:'Contact Name',     type:'text'},
+  {key:'title',          label:'Title',            type:'text'},
+  {key:'telNumber',      label:'Tel Number',       type:'text'},
+  {key:'email',          label:'Email',            type:'email'},
+  {key:'liStatus',       label:'LI Status',        type:'select', opts:['','Not Contacted','Connected','InMail Sent','Replied']},
+  {key:'liPlatform',     label:'LI Platform',      type:'select', opts:['','LinkedIn','LinkedIn Recruiter','Both']},
+  {key:'liOrLir',        label:'LI or LIR',        type:'select', opts:['','LI','LIR','Both','Neither']},
+  {key:'invenias',       label:'Invenias',          type:'select', opts:['','Yes','No']},
+  {key:'consultant',     label:'Consultant',        type:'select', opts:['','Amanda','Darrell','Tim','Don']},
+  {key:'followUpDate',   label:'Follow-up Date',    type:'date'},
+  {key:'notes',          label:'Notes',             type:'textarea'},
 ];
 
 // SP field name mapping (SharePoint internal names may differ)
 const SP_MAP = {
-  companyName: 'field_0',
-  contactName: 'field_1',
-  title:       'Title',
-  telNumber:   'field_3',
-  email:       'field_4',
-  liStatus:    'field_7',
-  liPlatform:  'field_5',
-  liOrLir:     'field_6',
-  invenias:    'field_8',
-  notes:       'field_9',
+  companyName:  'field_0',
+  contactName:  'field_1',
+  title:        'Title',
+  telNumber:    'field_3',
+  email:        'field_4',
+  liStatus:     'field_7',
+  liPlatform:   'field_5',
+  liOrLir:      'field_6',
+  invenias:     'field_8',
+  consultant:   'Consultant',
+  followUpDate: 'Follow_x0020_Up_x0020_Date',
+  notes:        'field_9',
 };
 
 const LI_STATUS_COLORS = {
@@ -611,8 +623,15 @@ window.addEventListener('load', () => {
 
 function loadCfg() {
   cfg = JSON.parse(localStorage.getItem('vtdb_cfg') || '{}');
-  cfg.siteUrl  = cfg.siteUrl  || SP_SITE;
-  cfg.listName = cfg.listName || SP_LIST;
+  // Always use hardcoded values — overrides anything in localStorage
+  cfg.siteUrl  = SP_SITE;
+  cfg.listName = SP_LIST;
+  cfg.siteId   = SP_SITE_ID;
+  cfg.listId   = SP_LIST_ID;
+  cfg.clientId = cfg.clientId || AZ_CLIENT;
+  cfg.tenantId = cfg.tenantId || AZ_TENANT;
+  spSiteId = SP_SITE_ID;
+  spListId = SP_LIST_ID;
 }
 function saveCfg() { localStorage.setItem('vtdb_cfg', JSON.stringify(cfg)); }
 
@@ -621,11 +640,11 @@ function saveCfg() { localStorage.setItem('vtdb_cfg', JSON.stringify(cfg)); }
 // ══════════════════════════════════════════════════════
 function loadDemoData() {
   records = [
-    {id:'d1', companyName:'Kyte Dynamics',    contactName:'Sarah Chen',      title:'CEO',           telNumber:'604-555-0101', email:'sarah@kytedynamics.com',  liStatus:'Connected',     liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', notes:'Series A, AI logistics platform'},
-    {id:'d2', companyName:'Texavie',          contactName:'Peyman Servati',  title:'Co-Founder',    telNumber:'',             email:'peyman@texavie.com',      liStatus:'InMail Sent',   liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  notes:'Wearable tech, seed stage'},
-    {id:'d3', companyName:'Humanoid',         contactName:'',                title:'',              telNumber:'',             email:'',                        liStatus:'Not Contacted', liPlatform:'',                   liOrLir:'',    invenias:'No',  notes:''},
-    {id:'d4', companyName:'D-Wave',           contactName:'Alan Baratz',     title:'CEO',           telNumber:'604-555-0199', email:'abaratz@dwavesys.com',    liStatus:'Replied',       liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', notes:'Quantum computing, public company'},
-    {id:'d5', companyName:'Arla Technologies',contactName:'Marcus Webb',     title:'Founder & CEO', telNumber:'778-555-0142', email:'marcus@arlatech.ca',      liStatus:'Connected',     liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  notes:'CleanTech, pre-seed'},
+    {id:'d1', companyName:'Kyte Dynamics',    contactName:'Sarah Chen',      title:'CEO',           telNumber:'604-555-0101', email:'sarah@kytedynamics.com',  liStatus:'Connected',     liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', consultant:'Tim',     followUpDate:'2026-03-20', notes:'Series A, AI logistics platform'},
+    {id:'d2', companyName:'Texavie',          contactName:'Peyman Servati',  title:'Co-Founder',    telNumber:'',             email:'peyman@texavie.com',      liStatus:'InMail Sent',   liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  consultant:'Darrell', followUpDate:'2026-03-15', notes:'Wearable tech, seed stage'},
+    {id:'d3', companyName:'Humanoid',         contactName:'',                title:'',              telNumber:'',             email:'',                        liStatus:'Not Contacted', liPlatform:'',                   liOrLir:'',    invenias:'No',  consultant:'Amanda',  followUpDate:'', notes:''},
+    {id:'d4', companyName:'D-Wave',           contactName:'Alan Baratz',     title:'CEO',           telNumber:'604-555-0199', email:'abaratz@dwavesys.com',    liStatus:'Replied',       liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', consultant:'Tim',     followUpDate:'2026-03-18', notes:'Quantum computing, public company'},
+    {id:'d5', companyName:'Arla Technologies',contactName:'Marcus Webb',     title:'Founder & CEO', telNumber:'778-555-0142', email:'marcus@arlatech.ca',      liStatus:'Connected',     liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  consultant:'Don',     followUpDate:'2026-03-25', notes:'CleanTech, pre-seed'},
   ];
   applyFilters();
   showToast('Running in demo mode — connect SharePoint in Settings to load live data', 'info');
@@ -635,8 +654,8 @@ function loadDemoData() {
 //  MICROSOFT AUTH
 // ══════════════════════════════════════════════════════
 function msSignIn() {
-  const cid = document.getElementById('s-cid').value.trim() || cfg.clientId;
-  const tid = document.getElementById('s-tid').value.trim() || cfg.tenantId;
+  const cid = AZ_CLIENT;
+  const tid = AZ_TENANT;
   if (!cid || !tid) { spMsg('Enter your Azure Client ID and Tenant ID first.', 'warn'); return; }
   const ru = encodeURIComponent('https://timswanson83.github.io/auth');
   const sc = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email');
@@ -900,6 +919,12 @@ function renderTable() {
           <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','invenias')" onchange="saveInlineEdit(this,'${r.id}','invenias')">
             ${['','Yes','No'].map(o=>`<option${o===r.invenias?' selected':''}>${o}</option>`).join('')}
           </select></div></td>
+      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','consultant')">${esc(r.consultant)||'—'}</div>
+          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','consultant')" onchange="saveInlineEdit(this,'${r.id}','consultant')">
+            ${['','Amanda','Darrell','Tim','Don'].map(o=>`<option${o===r.consultant?' selected':''}>${o}</option>`).join('')}
+          </select></div></td>
+      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','followUpDate')">${esc(r.followUpDate)||'—'}</div>
+          <div class="cell-edit"><input type="date" value="${esc(r.followUpDate)}" onblur="saveInlineEdit(this,'${r.id}','followUpDate')" onkeydown="inlineKey(event,this,'${r.id}','followUpDate')"></div></td>
       <td><div class="cell-display" style="max-width:220px;overflow:hidden;text-overflow:ellipsis" onclick="startInlineEdit(this,'${r.id}','notes')" title="${esc(r.notes)}">${esc(r.notes)||'—'}</div>
           <div class="cell-edit"><textarea onblur="saveInlineEdit(this,'${r.id}','notes')">${esc(r.notes)}</textarea></div></td>
       <td>
