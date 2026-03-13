@@ -1099,10 +1099,14 @@ function cancelInlineEdit(td) {
   td.closest('tr').classList.remove('editing-row');
 }
 
+const _savingIds = new Set();
 async function saveInlineEdit(el, id, field) {
+  const saveKey = id + '_' + field;
+  if (_savingIds.has(saveKey)) return;
+  _savingIds.add(saveKey);
   const td  = el.closest('td');
   const rec = records.find(r => r.id === id);
-  if (!rec) { cancelInlineEdit(td); return; }
+  if (!rec) { cancelInlineEdit(td); _savingIds.delete(saveKey); return; }
   const newVal = el.value;
   rec[field] = newVal;
   cancelInlineEdit(td);
@@ -1129,6 +1133,7 @@ async function saveInlineEdit(el, id, field) {
   } else if (id.startsWith('d')) {
     showToast('Demo mode — connect SharePoint to save changes', 'info');
   }
+  _savingIds.delete(saveKey);
 }
 
 // ══════════════════════════════════════════════════════
