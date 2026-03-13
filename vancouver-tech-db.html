@@ -279,8 +279,8 @@ td.active-edit .cell-edit{display:block;}
 // ══════════════════════════════════════════════════════
 const AZ_CLIENT   = '9a892d0e-8586-4946-b4f8-7e83827c1a63';
 const AZ_TENANT   = '8fb68b6a-0278-4e49-a0e3-2c0b90fd70a9';
-const SITE_URL    = 'https://corporaterecruiters2.sharepoint.com';
-const FILE_PATH   = '/Shared Documents/BizDev2026.xlsx';  // adjust if needed
+const DRIVE_ID    = 'b!dw_SwdrjHUuXkA6jrVW92cOPIzhg8_1HqqCSY_RKeCqXwSuKFFxrTpPY7Tqv5ABa';
+const FILE_PATH   = '/BizDev2026.xlsx';
 const SHEET_NAME  = 'Biz Dev 2026';
 
 // Column order in Excel (A=0, B=1, …)
@@ -392,20 +392,11 @@ async function msTest() {
 //  EXCEL — LOCATE FILE
 // ══════════════════════════════════════════════════════
 async function getFileIds() {
-  if (driveId && itemId) return true;
+  if (itemId) return true;
+  driveId = DRIVE_ID;
   try {
-    // Get the drive for the SharePoint site
-    const siteR = await apiFetch(`https://graph.microsoft.com/v1.0/sites/${new URL(SITE_URL).hostname}:/`);
-    if (!siteR.ok) throw new Error('Cannot reach SharePoint site');
-    const site = await siteR.json();
-    const drivesR = await apiFetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`);
-    const drives = await drivesR.json();
-    // Use the Documents drive
-    const drive = drives.value.find(d => d.name === 'Documents') || drives.value[0];
-    driveId = drive.id;
-    // Find the file
     const fileR = await apiFetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/root:${FILE_PATH}`);
-    if (!fileR.ok) throw new Error('BizDev2026.xlsx not found — please upload it to your Documents library');
+    if (!fileR.ok) throw new Error('BizDev2026.xlsx not found in Documents library');
     const file = await fileR.json();
     itemId = file.id;
     return true;
