@@ -9,16 +9,24 @@ p{font-size:16px;}
 <body>
 <p id="msg">Signing you in...</p>
 <script>
-  // Implicit flow — token arrives in hash, state contains return URL
-  const hash = new URLSearchParams(location.hash.substring(1));
-  const token = hash.get('access_token');
-  const state = hash.get('state');
-  if (token && state) {
-    const appUrl = decodeURIComponent(state);
-    location.href = appUrl + '#access_token=' + token + '&token_type=Bearer';
-  } else {
-    document.getElementById('msg').textContent = 'Sign-in failed — please try again.';
+const hash  = new URLSearchParams(location.hash.substring(1));
+const token = hash.get('access_token');
+const state = hash.get('state');
+
+if (window.parent !== window) {
+  // Running in a silent-refresh iframe — write token to localStorage and close
+  if (token) {
+    localStorage.setItem('vtdb_tk', token);
+    localStorage.setItem('vtdb_exp', Date.now() + 3500000);
   }
+  // Nothing else needed — parent app polls localStorage
+} else if (token && state) {
+  // Normal sign-in — redirect back to app with token in hash
+  const appUrl = decodeURIComponent(state);
+  location.href = appUrl + '#access_token=' + token + '&token_type=Bearer';
+} else {
+  document.getElementById('msg').textContent = 'Sign-in failed — please try again.';
+}
 </script>
 </body>
 </html>
