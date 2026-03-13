@@ -297,7 +297,7 @@ const FIELDS = [
   {key:'liOrLir',      label:'LI or LIR',     type:'select', opts:['','LI','LIR','Both','Neither']},
   {key:'invenias',     label:'Invenias',      type:'select', opts:['','Yes','No']},
   {key:'consultant',   label:'Consultant',    type:'select', opts:['','Amanda','Darrell','Tim','Don']},
-  {key:'followUpDate', label:'Follow-up Date',type:'date'},
+  {key:'followUpDate', label:'Follow-up Date',type:'text'},
   {key:'notes',        label:'Notes',         type:'textarea'},
 ];
 
@@ -551,7 +551,7 @@ function renderTable() {
       <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liOrLir')">${esc(r.liOrLir)||'—'}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liOrLir')">${['','LI','LIR','Both','Neither'].map(o=>`<option${o===r.liOrLir?' selected':''}>${o}</option>`).join('')}</select></div></td>
       <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','invenias')">${inv}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','invenias')">${['','Yes','No'].map(o=>`<option${o===r.invenias?' selected':''}>${o}</option>`).join('')}</select></div></td>
       <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','consultant')">${esc(r.consultant)||'—'}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','consultant')">${['','Amanda','Darrell','Tim','Don'].map(o=>`<option${o===r.consultant?' selected':''}>${o}</option>`).join('')}</select></div></td>
-      <td><div class="cell-display" onclick="startEdit(this,'${r.id}','followUpDate')">${esc(r.followUpDate)||'—'}</div><div class="cell-edit"><input type="date" value="${esc(r.followUpDate)}" onkeydown="editKey(event,this,'${r.id}','followUpDate')" onblur="commitEdit(this,'${r.id}','followUpDate')"></div></td>
+      <td><div class="cell-display" onclick="startEdit(this,'${r.id}','followUpDate')">${esc(r.followUpDate)||'—'}</div><div class="cell-edit"><input type="text" placeholder="e.g. Mar 20" value="${esc(r.followUpDate)}" onkeydown="editKey(event,this,'${r.id}','followUpDate')" onblur="commitEdit(this,'${r.id}','followUpDate')"></div></td>
       <td><div class="cell-display" onclick="startEdit(this,'${r.id}','notes')" style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.notes)}">${esc(r.notes)||'—'}</div><div class="cell-edit"><textarea onkeydown="editKey(event,this,'${r.id}','notes')" onblur="commitEdit(this,'${r.id}','notes')">${esc(r.notes)}</textarea></div></td>
       <td><div class="row-actions">
         <button class="icon-btn view" onclick="openCard('${r.id}')" title="Open">⤢</button>
