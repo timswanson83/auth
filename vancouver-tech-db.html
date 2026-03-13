@@ -573,12 +573,12 @@ const HARDCODED_LIST_ID = 'fb966a42-11f0-4e3b-a4a1-73093b5b9315';
 const SP_MAP = {
   companyName:  'field_0',
   contactName:  'field_1',
-  title:        'Title',
+  title:        'JobTiltle',
   telNumber:    'field_3',
   email:        'field_4',
-  liStatus:     'field_7',
+  liStatus:     'field_5',
   liPlatform:   'field_6',
-  liOrLir:      'field_5',
+  liOrLir:      'field_7',
   invenias:     'field_8',
   consultant:   'Consultant',
   followUpDate: 'FollowUpDate',
@@ -746,8 +746,8 @@ async function refreshRecords() {
 // ══════════════════════════════════════════════════════
 //  SHAREPOINT — WRITE
 // ══════════════════════════════════════════════════════
-const NUMBER_FIELDS = ['field_3','field_5','field_6','field_8'];
-const SKIP_FIELDS   = ['Title'];
+const NUMBER_FIELDS = ['field_3','field_8'];
+const SKIP_FIELDS   = [];
 
 function toSpFields(rec) {
   const f = {};
@@ -777,10 +777,10 @@ async function spCreate(rec) {
 }
 
 async function spUpdate(id, rec) {
-  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}/fields`, {
+  const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}`, {
     method: 'PATCH',
     headers: {Authorization:'Bearer '+msToken, 'Content-Type':'application/json'},
-    body: JSON.stringify(toSpFields(rec))
+    body: JSON.stringify({fields: toSpFields(rec)})
   });
   if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e?.error?.message || r.status); }
 }
