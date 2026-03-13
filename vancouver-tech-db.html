@@ -558,42 +558,18 @@ Files.ReadWrite.All</div>
 
 <script>
 // ══════════════════════════════════════════════════════
-//  STATE
+//  CONFIG — hardcoded IDs
 // ══════════════════════════════════════════════════════
-let records   = [];       // all records from SP or local demo
-let filtered  = [];       // after search/filter
-let sortCol   = 'companyName';
-let sortDir   = 1;
-let editingId = null;     // currently open card
-let msToken   = null;
-let cfg       = {};
-let spSiteId  = null;
-let spListId  = null;
+const AZ_CLIENT = '9a892d0e-8586-4946-b4f8-7e83827c1a63';
+const AZ_TENANT = '8fb68b6a-0278-4e49-a0e3-2c0b90fd70a9';
+const SP_SITE   = 'https://corporaterecruiters2.sharepoint.com';
+const SP_LIST   = 'Biz Dev 2026';
 
-// SharePoint pre-filled values — hardcoded so no setup needed
-const SP_SITE    = 'https://corporaterecruiters2.sharepoint.com';
-const SP_LIST    = 'Biz Dev 2026';
-const SP_SITE_ID = 'corporaterecruiters2.sharepoint.com,c1d20f77-e3da-4b1d-9790-0ea3ad55bdd9,38238fc3-f360-47fd-aaa0-9263f44a782a';
-const SP_LIST_ID = 'fb966a42-11f0-4e3b-a4a1-73093b5b9315';
-const AZ_CLIENT  = '9a892d0e-8586-4946-b4f8-7e83827c1a63';
-const AZ_TENANT  = '8fb68b6a-0278-4e49-a0e3-2c0b90fd70a9';
+// Hardcoded IDs — no discovery needed
+const HARDCODED_SITE_ID = 'corporaterecruiters2.sharepoint.com,c1d20f77-e3da-4b1d-9790-0ea3ad55bdd9,38238fc3-f360-47fd-aaa0-9263f44a782a';
+const HARDCODED_LIST_ID = 'fb966a42-11f0-4e3b-a4a1-73093b5b9315';
 
-const FIELDS = [
-  {key:'companyName',    label:'Company Name',    type:'text'},
-  {key:'contactName',    label:'Contact Name',     type:'text'},
-  {key:'title',          label:'Title',            type:'text'},
-  {key:'telNumber',      label:'Tel Number',       type:'text'},
-  {key:'email',          label:'Email',            type:'email'},
-  {key:'liStatus',       label:'LI Status',        type:'select', opts:['','Not Contacted','Connected','InMail Sent','Replied']},
-  {key:'liPlatform',     label:'LI Platform',      type:'select', opts:['','LinkedIn','LinkedIn Recruiter','Both']},
-  {key:'liOrLir',        label:'LI or LIR',        type:'select', opts:['','LI','LIR','Both','Neither']},
-  {key:'invenias',       label:'Invenias',          type:'select', opts:['','Yes','No']},
-  {key:'consultant',     label:'Consultant',        type:'select', opts:['','Amanda','Darrell','Tim','Don']},
-  {key:'followUpDate',   label:'Follow-up Date',    type:'date'},
-  {key:'notes',          label:'Notes',             type:'textarea'},
-];
-
-// SP field name mapping (SharePoint internal names may differ)
+// SharePoint field mapping (confirmed working)
 const SP_MAP = {
   companyName:  'field_0',
   contactName:  'field_1',
@@ -616,203 +592,112 @@ const LI_STATUS_COLORS = {
   'Replied':       {c:'#6366f1', bg:'rgba(99,102,241,.13)'},
 };
 
+const FIELDS = [
+  {key:'companyName',  label:'Company Name',  type:'text'},
+  {key:'contactName',  label:'Contact Name',  type:'text'},
+  {key:'title',        label:'Title',         type:'text'},
+  {key:'telNumber',    label:'Tel Number',    type:'text'},
+  {key:'email',        label:'Email',         type:'email'},
+  {key:'liStatus',     label:'LI Status',     type:'select', opts:['','Not Contacted','Connected','InMail Sent','Replied']},
+  {key:'liPlatform',   label:'LI Platform',   type:'select', opts:['','LinkedIn','LinkedIn Recruiter','Both']},
+  {key:'liOrLir',      label:'LI or LIR',     type:'select', opts:['','LI','LIR','Both','Neither']},
+  {key:'invenias',     label:'Invenias',      type:'select', opts:['','Yes','No']},
+  {key:'consultant',   label:'Consultant',    type:'select', opts:['','Amanda','Darrell','Tim','Don']},
+  {key:'followUpDate', label:'Follow-up Date',type:'date'},
+  {key:'notes',        label:'Notes',         type:'textarea'},
+];
+
+// ══════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════
+let records  = [];
+let filtered = [];
+let sortCol  = 'companyName';
+let sortDir  = 1;
+let editingId = null;
+let msToken  = null;
+let spSiteId = HARDCODED_SITE_ID;
+let spListId = HARDCODED_LIST_ID;
+
 // ══════════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════════
 window.addEventListener('load', () => {
-  loadCfg();
-  populateSettingsForm();
   checkMsToken();
-  if (!msToken) loadDemoData();
 });
 
-function loadCfg() {
-  cfg = JSON.parse(localStorage.getItem('vtdb_cfg') || '{}');
-  // Always use hardcoded values — overrides anything in localStorage
-  cfg.siteUrl  = SP_SITE;
-  cfg.listName = SP_LIST;
-  cfg.siteId   = SP_SITE_ID;
-  cfg.listId   = SP_LIST_ID;
-  cfg.clientId = cfg.clientId || AZ_CLIENT;
-  cfg.tenantId = cfg.tenantId || AZ_TENANT;
-  spSiteId = SP_SITE_ID;
-  spListId = SP_LIST_ID;
-}
-function saveCfg() { localStorage.setItem('vtdb_cfg', JSON.stringify(cfg)); }
-
 // ══════════════════════════════════════════════════════
-//  DEMO DATA (shown before SharePoint connected)
+//  AUTH — simple implicit flow (token cached in localStorage)
 // ══════════════════════════════════════════════════════
-function loadDemoData() {
-  records = [
-    {id:'d1', companyName:'Kyte Dynamics',    contactName:'Sarah Chen',      title:'CEO',           telNumber:'604-555-0101', email:'sarah@kytedynamics.com',  liStatus:'Connected',     liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', consultant:'Tim',     followUpDate:'2026-03-20', notes:'Series A, AI logistics platform'},
-    {id:'d2', companyName:'Texavie',          contactName:'Peyman Servati',  title:'Co-Founder',    telNumber:'',             email:'peyman@texavie.com',      liStatus:'InMail Sent',   liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  consultant:'Darrell', followUpDate:'2026-03-15', notes:'Wearable tech, seed stage'},
-    {id:'d3', companyName:'Humanoid',         contactName:'',                title:'',              telNumber:'',             email:'',                        liStatus:'Not Contacted', liPlatform:'',                   liOrLir:'',    invenias:'No',  consultant:'Amanda',  followUpDate:'', notes:''},
-    {id:'d4', companyName:'D-Wave',           contactName:'Alan Baratz',     title:'CEO',           telNumber:'604-555-0199', email:'abaratz@dwavesys.com',    liStatus:'Replied',       liPlatform:'LinkedIn Recruiter', liOrLir:'LIR', invenias:'Yes', consultant:'Tim',     followUpDate:'2026-03-18', notes:'Quantum computing, public company'},
-    {id:'d5', companyName:'Arla Technologies',contactName:'Marcus Webb',     title:'Founder & CEO', telNumber:'778-555-0142', email:'marcus@arlatech.ca',      liStatus:'Connected',     liPlatform:'LinkedIn',           liOrLir:'LI',  invenias:'No',  consultant:'Don',     followUpDate:'2026-03-25', notes:'CleanTech, pre-seed'},
-  ];
-  applyFilters();
-  showToast('Running in demo mode — connect SharePoint in Settings to load live data', 'info');
-}
-
-// ══════════════════════════════════════════════════════
-//  MICROSOFT AUTH
-// ══════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════
-//  MICROSOFT AUTH — PKCE flow (long-lived sessions)
-// ══════════════════════════════════════════════════════
-
-function base64url(buffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-
-async function generatePKCE() {
-  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
-  const digest   = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge = base64url(digest);
-  return { verifier, challenge };
-}
-
-async function msSignIn() {
-  const { verifier, challenge } = await generatePKCE();
-  localStorage.setItem('vtdb_pkce', verifier);
-  localStorage.setItem('vtdb_return', location.href.split('#')[0]);
+function msSignIn() {
   const ru = encodeURIComponent('https://timswanson83.github.io/auth');
-  const sc = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email');
-  const st = encodeURIComponent(location.href.split('#')[0]);
-  location.href = `https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/authorize`
-    + `?client_id=${AZ_CLIENT}&response_type=code&redirect_uri=${ru}`
-    + `&scope=${sc}&response_mode=query&state=${st}`
-    + `&code_challenge=${challenge}&code_challenge_method=S256`
-    + `&prompt=select_account`;
+  const sc = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All openid profile email');
+  const st = encodeURIComponent('https://timswanson83.github.io/auth/vancouver-tech-db.html');
+  location.href = `https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/authorize?client_id=${AZ_CLIENT}&response_type=token&redirect_uri=${ru}&scope=${sc}&response_mode=fragment&state=${st}&prompt=select_account`;
 }
 
-async function exchangeCodeForToken(code) {
-  const verifier = localStorage.getItem('vtdb_pkce');
-  const body = new URLSearchParams({
-    client_id:     AZ_CLIENT,
-    grant_type:    'authorization_code',
-    code,
-    redirect_uri:  'https://timswanson83.github.io/auth',
-    code_verifier: verifier,
-    scope:         'User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email',
-  });
-  const r = await fetch(`https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString()
-  });
-  const data = await r.json();
-  if (data.access_token) {
-    localStorage.setItem('vtdb_tk',  data.access_token);
-    localStorage.setItem('vtdb_exp', Date.now() + (data.expires_in * 1000));
-    if (data.refresh_token) localStorage.setItem('vtdb_rt', data.refresh_token);
-    return data.access_token;
-  }
-  throw new Error(data.error_description || 'Token exchange failed');
-}
-
-async function refreshAccessToken() {
-  const rt = localStorage.getItem('vtdb_rt');
-  if (!rt) return null;
-  const body = new URLSearchParams({
-    client_id:     AZ_CLIENT,
-    grant_type:    'refresh_token',
-    refresh_token: rt,
-    scope:         'User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access openid profile email',
-  });
-  try {
-    const r = await fetch(`https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString()
-    });
-    const data = await r.json();
-    if (data.access_token) {
-      localStorage.setItem('vtdb_tk',  data.access_token);
-      localStorage.setItem('vtdb_exp', Date.now() + (data.expires_in * 1000));
-      if (data.refresh_token) localStorage.setItem('vtdb_rt', data.refresh_token);
-      return data.access_token;
-    }
-  } catch(e) { console.warn('Refresh failed:', e); }
-  return null;
-}
-
-async function getValidToken() {
-  const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
-  const tk  = localStorage.getItem('vtdb_tk');
-  // Refresh 5 minutes before expiry
-  if (tk && Date.now() < exp - 300000) return tk;
-  // Try to refresh
-  const refreshed = await refreshAccessToken();
-  if (refreshed) return refreshed;
-  // Need to sign in again
-  return null;
-}
-
-async function checkMsToken() {
-  // Handle auth code callback (PKCE flow)
-  const params = new URLSearchParams(location.search);
-  const code   = params.get('code');
-  const state  = params.get('state');
-  if (code) {
-    history.replaceState({}, document.title, location.pathname);
-    try {
-      showToast('Completing sign-in…', 'info');
-      msToken = await exchangeCodeForToken(code);
+function checkMsToken() {
+  // Token arrives via hash (from GitHub index.html redirect)
+  if (location.hash && location.hash.includes('access_token')) {
+    const p = new URLSearchParams(location.hash.substring(1));
+    msToken = p.get('access_token');
+    if (msToken) {
+      localStorage.setItem('vtdb_tk', msToken);
+      localStorage.setItem('vtdb_exp', Date.now() + 3500000); // ~58 min
       setConn(true);
-      if (state) { location.href = decodeURIComponent(state); return; }
-      loadFromSharePoint();
-    } catch(e) {
-      showToast('Sign-in failed: ' + e.message, 'err');
-      loadDemoData();
     }
+    history.replaceState({}, document.title, location.pathname);
+    loadFromSharePoint();
     return;
   }
-  // Check existing token
-  msToken = await getValidToken();
-  if (msToken) {
+  // Check cached token
+  const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
+  const tk  = localStorage.getItem('vtdb_tk');
+  if (tk && Date.now() < exp) {
+    msToken = tk;
     setConn(true);
     loadFromSharePoint();
   } else {
     localStorage.removeItem('vtdb_tk');
-    localStorage.removeItem('vtdb_rt');
+    localStorage.removeItem('vtdb_exp');
     loadDemoData();
   }
 }
 
-// Auto-refresh token every 45 minutes while app is open
-setInterval(async () => {
-  const refreshed = await refreshAccessToken();
-  if (refreshed) { msToken = refreshed; }
-}, 45 * 60 * 1000);
-
-async function msTest() {
-  spMsg('Testing…', 'info');
-  msToken = await getValidToken();
-  if (!msToken) { spMsg('Not signed in. Click Sign in with Microsoft first.', 'warn'); return; }
-  try {
-    const r = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + msToken } });
-    if (r.ok) {
-      const m = await r.json();
-      spMsg(`✅ Connected as ${m.displayName} (${m.mail || m.userPrincipalName})`, 'ok');
-      setConn(true);
-    } else {
-      msToken = null;
-      localStorage.removeItem('vtdb_tk');
-      localStorage.removeItem('vtdb_rt');
-      setConn(false);
-      spMsg('Session expired — please sign in again.', 'warn');
-    }
-  } catch(e) { spMsg('Network error: ' + e.message, 'err'); }
-}
-
 function setConn(on) {
-  const d = document.getElementById('conn-dot'), t = document.getElementById('conn-txt');
+  const d = document.getElementById('conn-dot');
+  const t = document.getElementById('conn-txt');
   if (!d) return;
   d.classList.toggle('on', on);
   t.textContent = on ? 'SharePoint live' : 'Local mode';
+}
+
+async function msTest() {
+  spMsg('Testing…', 'info');
+  if (!msToken) { spMsg('Not signed in.', 'warn'); return; }
+  try {
+    const r = await fetch('https://graph.microsoft.com/v1.0/me', {headers:{Authorization:'Bearer '+msToken}});
+    if (r.ok) {
+      const m = await r.json();
+      spMsg(`✅ Connected as ${m.displayName} (${m.mail||m.userPrincipalName})`, 'ok');
+    } else {
+      msToken = null; localStorage.removeItem('vtdb_tk'); setConn(false);
+      spMsg('Token expired — please sign in again.', 'warn');
+    }
+  } catch(e) { spMsg('Error: ' + e.message, 'err'); }
+}
+
+// ══════════════════════════════════════════════════════
+//  DEMO DATA
+// ══════════════════════════════════════════════════════
+function loadDemoData() {
+  records = [
+    {id:'d1',companyName:'Kyte Dynamics',   contactName:'Sarah Chen',     title:'CEO',        telNumber:'604-555-0101',email:'sarah@kytedynamics.com', liStatus:'Connected',    liPlatform:'LinkedIn Recruiter',liOrLir:'LIR',invenias:'Yes',consultant:'Tim',    followUpDate:'2026-03-20',notes:'Series A, AI logistics'},
+    {id:'d2',companyName:'Texavie',         contactName:'Peyman Servati', title:'Co-Founder', telNumber:'',            email:'peyman@texavie.com',     liStatus:'InMail Sent',  liPlatform:'LinkedIn',          liOrLir:'LI', invenias:'No', consultant:'Darrell',followUpDate:'2026-03-15',notes:'Wearable tech'},
+    {id:'d3',companyName:'D-Wave',          contactName:'Alan Baratz',    title:'CEO',        telNumber:'604-555-0199',email:'abaratz@dwavesys.com',   liStatus:'Replied',      liPlatform:'LinkedIn Recruiter',liOrLir:'LIR',invenias:'Yes',consultant:'Tim',    followUpDate:'2026-03-18',notes:'Quantum computing'},
+  ];
+  applyFilters();
+  showToast('Demo mode — sign in to load live data', 'info');
 }
 
 // ══════════════════════════════════════════════════════
@@ -821,38 +706,20 @@ function setConn(on) {
 async function loadFromSharePoint() {
   if (!msToken) return;
   try {
-    // Use stored IDs if available
-    if (cfg.siteId && cfg.listId) {
-      spSiteId = cfg.siteId;
-      spListId = cfg.listId;
-      await refreshRecords();
-      return;
-    }
-    // Otherwise discover them
-    const siteUrl  = cfg.siteUrl || SP_SITE;
-    const hostname = new URL(siteUrl).hostname;
-    const sitePath = new URL(siteUrl).pathname;
-    const siteR    = await gFetch(`https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}`);
-    if (!siteR.ok) { showToast('Could not find SharePoint site — check URL in Settings', 'err'); return; }
-    const site = await siteR.json();
-    spSiteId = site.id;
-    const listName = cfg.listName || SP_LIST;
-    const listsR   = await gFetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists?$select=id,displayName`);
-    const listsData= await listsR.json();
-    const found    = (listsData.value||[]).find(l => l.displayName === listName);
-    if (!found) { showToast('SharePoint list not found — check list name in Settings', 'err'); return; }
-    spListId = found.id;
     await refreshRecords();
   } catch(e) {
-    showToast('SharePoint connection error: ' + e.message, 'err');
-    if (!records.length) loadDemoData();
+    showToast('SharePoint error: ' + e.message, 'err');
+    loadDemoData();
   }
 }
 
 async function refreshRecords() {
-  if (!msToken || !spSiteId || !spListId) return;
+  if (!msToken) return;
   try {
-    const r = await gFetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items?expand=fields&$top=2000`);
+    const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items?expand=fields&$top=2000`, {
+      headers: {Authorization: 'Bearer ' + msToken}
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e?.error?.message || r.status); }
     const data = await r.json();
     records = (data.value || []).map(item => ({
       id:           item.id,
@@ -870,38 +737,24 @@ async function refreshRecords() {
       notes:        String(item.fields[SP_MAP.notes]        ?? ''),
     }));
     applyFilters();
-    showToast(`Loaded ${records.length} records from SharePoint`, 'ok');
+    showToast(`Loaded ${records.length} records`, 'ok');
   } catch(e) {
-    showToast('Failed to load records: ' + e.message, 'err');
+    showToast('Failed to load: ' + e.message, 'err');
   }
-}
-
-async function gFetch(url) {
-  msToken = await getValidToken();
-  if (!msToken) { setConn(false); throw new Error('Not authenticated'); }
-  return fetch(url, { headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' } });
 }
 
 // ══════════════════════════════════════════════════════
 //  SHAREPOINT — WRITE
 // ══════════════════════════════════════════════════════
+const NUMBER_FIELDS = ['field_3','field_5','field_6','field_8'];
+const SKIP_FIELDS   = ['Title'];
+
 function toSpFields(rec) {
   const f = {};
-  // Number fields in SharePoint — skip entirely if empty
-  const numberFields = ['field_3','field_5','field_6','field_8'];
-  // Skip Title — SharePoint manages it
-  const skipFields   = ['Title'];
   Object.entries(SP_MAP).forEach(([k, spk]) => {
-    if (skipFields.includes(spk)) return;
-    if (numberFields.includes(spk)) {
-      if (rec[k] && rec[k] !== '') f[spk] = rec[k];
-      return;
-    }
-    // Skip empty followUpDate — SharePoint date fields reject empty strings
-    if (spk === 'FollowUpDate') {
-      if (rec[k] && rec[k] !== '') f[spk] = rec[k];
-      return;
-    }
+    if (SKIP_FIELDS.includes(spk)) return;
+    if (NUMBER_FIELDS.includes(spk)) { if (rec[k]) f[spk] = rec[k]; return; }
+    if (spk === 'FollowUpDate')      { if (rec[k]) f[spk] = rec[k]; return; }
     f[spk] = rec[k] || '';
   });
   return f;
@@ -912,39 +765,30 @@ async function spCreate(rec) {
   if (_creating) return null;
   _creating = true;
   try {
-    if (!msToken || !spSiteId || !spListId) return null;
     const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items`, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: toSpFields(rec) })
+      headers: {Authorization:'Bearer '+msToken, 'Content-Type':'application/json'},
+      body: JSON.stringify({fields: toSpFields(rec)})
     });
     const data = await r.json();
+    if (!r.ok) throw new Error(data?.error?.message || r.status);
     return data.id || null;
-  } finally {
-    _creating = false;
-  }
+  } finally { _creating = false; }
 }
 
 async function spUpdate(id, rec) {
-  if (!spSiteId || !spListId) return;
-  msToken = await getValidToken();
-  if (!msToken) { showToast('Not signed in — please sign in again', 'err'); return; }
   const r = await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}/fields`, {
     method: 'PATCH',
-    headers: { Authorization: 'Bearer ' + msToken, 'Content-Type': 'application/json' },
+    headers: {Authorization:'Bearer '+msToken, 'Content-Type':'application/json'},
     body: JSON.stringify(toSpFields(rec))
   });
-  if (!r.ok) {
-    const e = await r.json().catch(()=>({}));
-    throw new Error(e?.error?.message || r.status);
-  }
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e?.error?.message || r.status); }
 }
 
 async function spDelete(id) {
-  if (!msToken || !spSiteId || !spListId) return;
   await fetch(`https://graph.microsoft.com/v1.0/sites/${spSiteId}/lists/${spListId}/items/${id}`, {
     method: 'DELETE',
-    headers: { Authorization: 'Bearer ' + msToken }
+    headers: {Authorization:'Bearer '+msToken}
   });
 }
 
@@ -953,27 +797,25 @@ async function spDelete(id) {
 // ══════════════════════════════════════════════════════
 function applyFilters() {
   const q   = (document.getElementById('search')?.value || '').toLowerCase();
-  const fls = document.getElementById('f-listatus')?.value  || '';
-  const flp = document.getElementById('f-liplatform')?.value|| '';
-  const fll = document.getElementById('f-lilir')?.value     || '';
-  const fli = document.getElementById('f-invenias')?.value  || '';
-
+  const fls = document.getElementById('f-listatus')?.value   || '';
+  const flp = document.getElementById('f-liplatform')?.value || '';
+  const fll = document.getElementById('f-lilir')?.value      || '';
+  const fli = document.getElementById('f-invenias')?.value   || '';
   filtered = records.filter(r => {
-    const txt = [r.companyName, r.contactName, r.title, r.email, r.notes].join(' ').toLowerCase();
+    const txt = [r.companyName,r.contactName,r.title,r.email,r.notes].join(' ').toLowerCase();
     return (!q   || txt.includes(q))
         && (!fls || r.liStatus   === fls)
         && (!flp || r.liPlatform === flp)
         && (!fll || r.liOrLir    === fll)
         && (!fli || r.invenias   === fli);
   });
-
   doSort();
 }
 
 function doSort() {
-  filtered = [...filtered].sort((a, b) => {
-    const av = (a[sortCol] || '').toLowerCase();
-    const bv = (b[sortCol] || '').toLowerCase();
+  filtered = [...filtered].sort((a,b) => {
+    const av = (a[sortCol]||'').toLowerCase();
+    const bv = (b[sortCol]||'').toLowerCase();
     if (av < bv) return -sortDir;
     if (av > bv) return sortDir;
     return 0;
@@ -985,8 +827,8 @@ function sortBy(col) {
   if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
   document.querySelectorAll('thead th .si').forEach(e => e.textContent = '↕');
   document.querySelectorAll('thead th').forEach(e => e.classList.remove('sorted'));
-  const h = document.getElementById('sh-' + col);
-  if (h) { h.textContent = sortDir === 1 ? '↑' : '↓'; h.closest('th').classList.add('sorted'); }
+  const h = document.getElementById('sh-'+col);
+  if (h) { h.textContent = sortDir===1?'↑':'↓'; h.closest('th').classList.add('sorted'); }
   doSort();
 }
 
@@ -1003,164 +845,156 @@ function renderTable() {
   const tbody = document.getElementById('table-body');
   const cnt   = document.getElementById('rec-count');
   if (!tbody) return;
-
   cnt.textContent = filtered.length === records.length
     ? `${records.length} records`
     : `${filtered.length} of ${records.length} records`;
-
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state">No records match your search or filters</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">No records match your search or filters</div></td></tr>`;
     return;
   }
-
   tbody.innerHTML = filtered.map(r => {
-    const ls  = LI_STATUS_COLORS[r.liStatus] || {c:'var(--text-3)', bg:'transparent'};
-    const ini = initials(r.companyName);
+    const ls  = LI_STATUS_COLORS[r.liStatus] || {c:'var(--text-3)',bg:'transparent'};
     const inv = r.invenias === 'Yes'
       ? `<span class="badge" style="color:#10b981;background:rgba(16,185,129,.12)"><span class="bdot" style="background:#10b981"></span>Yes</span>`
       : r.invenias === 'No'
       ? `<span class="badge" style="color:var(--text-3);background:rgba(107,114,128,.1)">No</span>`
       : '—';
     const lisBadge = r.liStatus
-      ? `<span class="badge" style="color:${ls.c};background:${ls.bg}"><span class="bdot" style="background:${ls.c}"></span>${r.liStatus}</span>`
+      ? `<span class="badge" style="color:${ls.c};background:${ls.bg}"><span class="bdot" style="background:${ls.c}"></span>${esc(r.liStatus)}</span>`
       : '—';
-
-    return `<tr ondblclick="openCard('${r.id}')" title="Double-click to open full record">
-      <td><div class="cell-display company" onclick="startInlineEdit(this,'${r.id}','companyName')">${esc(r.companyName)||'—'}</div>
-          <div class="cell-edit"><input type="text" value="${esc(r.companyName)}" onblur="saveInlineEdit(this,'${r.id}','companyName')" onkeydown="inlineKey(event,this,'${r.id}','companyName')"></div></td>
-      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','contactName')">${esc(r.contactName)||'—'}</div>
-          <div class="cell-edit"><input type="text" value="${esc(r.contactName)}" onblur="saveInlineEdit(this,'${r.id}','contactName')" onkeydown="inlineKey(event,this,'${r.id}','contactName')"></div></td>
-      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','title')">${esc(r.title)||'—'}</div>
-          <div class="cell-edit"><input type="text" value="${esc(r.title)}" onblur="saveInlineEdit(this,'${r.id}','title')" onkeydown="inlineKey(event,this,'${r.id}','title')"></div></td>
-      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','telNumber')">${esc(r.telNumber)||'—'}</div>
-          <div class="cell-edit"><input type="text" value="${esc(r.telNumber)}" onblur="saveInlineEdit(this,'${r.id}','telNumber')" onkeydown="inlineKey(event,this,'${r.id}','telNumber')"></div></td>
-      <td><div class="cell-display email" onclick="startInlineEdit(this,'${r.id}','email')">${r.email?`<a href="mailto:${esc(r.email)}" onclick="event.stopPropagation()">${esc(r.email)}</a>`:'—'}</div>
-          <div class="cell-edit"><input type="email" value="${esc(r.email)}" onblur="saveInlineEdit(this,'${r.id}','email')" onkeydown="inlineKey(event,this,'${r.id}','email')"></div></td>
-      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','liStatus')">${lisBadge}</div>
-          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','liStatus')" onchange="saveInlineEdit(this,'${r.id}','liStatus')">
+    return `<tr ondblclick="openCard('${r.id}')">
+      <td><div class="cell-display company" onclick="startEdit(this,'${r.id}','companyName')">${esc(r.companyName)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.companyName)}" onkeydown="editKey(event,this,'${r.id}','companyName')" onblur="commitEdit(this,'${r.id}','companyName')"></div></td>
+      <td><div class="cell-display" onclick="startEdit(this,'${r.id}','contactName')">${esc(r.contactName)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.contactName)}" onkeydown="editKey(event,this,'${r.id}','contactName')" onblur="commitEdit(this,'${r.id}','contactName')"></div></td>
+      <td><div class="cell-display" onclick="startEdit(this,'${r.id}','title')">${esc(r.title)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.title)}" onkeydown="editKey(event,this,'${r.id}','title')" onblur="commitEdit(this,'${r.id}','title')"></div></td>
+      <td><div class="cell-display" onclick="startEdit(this,'${r.id}','telNumber')">${esc(r.telNumber)||'—'}</div>
+          <div class="cell-edit"><input type="text" value="${esc(r.telNumber)}" onkeydown="editKey(event,this,'${r.id}','telNumber')" onblur="commitEdit(this,'${r.id}','telNumber')"></div></td>
+      <td><div class="cell-display email" onclick="startEdit(this,'${r.id}','email')">${r.email?`<a href="mailto:${esc(r.email)}" onclick="event.stopPropagation()">${esc(r.email)}</a>`:'—'}</div>
+          <div class="cell-edit"><input type="email" value="${esc(r.email)}" onkeydown="editKey(event,this,'${r.id}','email')" onblur="commitEdit(this,'${r.id}','email')"></div></td>
+      <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liStatus')">${lisBadge}</div>
+          <div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liStatus')">
             ${['','Not Contacted','Connected','InMail Sent','Replied'].map(o=>`<option${o===r.liStatus?' selected':''}>${o}</option>`).join('')}
           </select></div></td>
-      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','liPlatform')">${esc(r.liPlatform)||'—'}</div>
-          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','liPlatform')" onchange="saveInlineEdit(this,'${r.id}','liPlatform')">
+      <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liPlatform')">${esc(r.liPlatform)||'—'}</div>
+          <div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liPlatform')">
             ${['','LinkedIn','LinkedIn Recruiter','Both'].map(o=>`<option${o===r.liPlatform?' selected':''}>${o}</option>`).join('')}
           </select></div></td>
-      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','liOrLir')">${esc(r.liOrLir)||'—'}</div>
-          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','liOrLir')" onchange="saveInlineEdit(this,'${r.id}','liOrLir')">
+      <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liOrLir')">${esc(r.liOrLir)||'—'}</div>
+          <div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liOrLir')">
             ${['','LI','LIR','Both','Neither'].map(o=>`<option${o===r.liOrLir?' selected':''}>${o}</option>`).join('')}
           </select></div></td>
-      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','invenias')">${inv}</div>
-          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','invenias')" onchange="saveInlineEdit(this,'${r.id}','invenias')">
+      <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','invenias')">${inv}</div>
+          <div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','invenias')">
             ${['','Yes','No'].map(o=>`<option${o===r.invenias?' selected':''}>${o}</option>`).join('')}
           </select></div></td>
-      <td><div class="cell-display" onclick="startInlineEditSelect(this,'${r.id}','consultant')">${esc(r.consultant)||'—'}</div>
-          <div class="cell-edit"><select onblur="saveInlineEdit(this,'${r.id}','consultant')" onchange="saveInlineEdit(this,'${r.id}','consultant')">
+      <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','consultant')">${esc(r.consultant)||'—'}</div>
+          <div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','consultant')">
             ${['','Amanda','Darrell','Tim','Don'].map(o=>`<option${o===r.consultant?' selected':''}>${o}</option>`).join('')}
           </select></div></td>
-      <td><div class="cell-display" onclick="startInlineEdit(this,'${r.id}','followUpDate')">${esc(r.followUpDate)||'—'}</div>
-          <div class="cell-edit"><input type="date" value="${esc(r.followUpDate)}" onblur="saveInlineEdit(this,'${r.id}','followUpDate')" onkeydown="inlineKey(event,this,'${r.id}','followUpDate')"></div></td>
-      <td><div class="cell-display" style="max-width:220px;overflow:hidden;text-overflow:ellipsis" onclick="startInlineEdit(this,'${r.id}','notes')" title="${esc(r.notes)}">${esc(r.notes)||'—'}</div>
-          <div class="cell-edit"><textarea onblur="saveInlineEdit(this,'${r.id}','notes')">${esc(r.notes)}</textarea></div></td>
-      <td>
-        <div class="row-actions">
-          <button class="icon-btn view" onclick="openCard('${r.id}')" title="Open full record">⤢</button>
-          <button class="icon-btn del"  onclick="deleteRecord('${r.id}')" title="Delete">✕</button>
-        </div>
-      </td>
+      <td><div class="cell-display" onclick="startEdit(this,'${r.id}','followUpDate')">${esc(r.followUpDate)||'—'}</div>
+          <div class="cell-edit"><input type="date" value="${esc(r.followUpDate)}" onkeydown="editKey(event,this,'${r.id}','followUpDate')" onblur="commitEdit(this,'${r.id}','followUpDate')"></div></td>
+      <td><div class="cell-display" onclick="startEdit(this,'${r.id}','notes')" style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${esc(r.notes)}">${esc(r.notes)||'—'}</div>
+          <div class="cell-edit"><textarea onkeydown="editKey(event,this,'${r.id}','notes')" onblur="commitEdit(this,'${r.id}','notes')">${esc(r.notes)}</textarea></div></td>
+      <td><div class="row-actions">
+        <button class="icon-btn view" onclick="openCard('${r.id}')" title="Open">⤢</button>
+        <button class="icon-btn del"  onclick="deleteRecord('${r.id}')" title="Delete">✕</button>
+      </div></td>
     </tr>`;
   }).join('');
 }
 
 // ══════════════════════════════════════════════════════
-//  INLINE EDITING
+//  INLINE EDIT
 // ══════════════════════════════════════════════════════
-function startInlineEdit(displayEl, id, field) {
-  const td = displayEl.closest('td');
+function startEdit(el, id, field) {
+  const td = el.closest('td');
   td.classList.add('active-edit');
-  const input = td.querySelector('.cell-edit input, .cell-edit textarea');
-  if (input) { input.focus(); input.select(); }
+  const inp = td.querySelector('.cell-edit input, .cell-edit textarea');
+  if (inp) { inp.focus(); inp.select(); }
   td.closest('tr').classList.add('editing-row');
 }
 
-function startInlineEditSelect(displayEl, id, field) {
-  const td = displayEl.closest('td');
+function startEditSel(el, id, field) {
+  const td = el.closest('td');
   td.classList.add('active-edit');
   const sel = td.querySelector('.cell-edit select');
   if (sel) sel.focus();
   td.closest('tr').classList.add('editing-row');
 }
 
-function inlineKey(e, el, id, field) {
-  if (e.key === 'Enter') { e.preventDefault(); saveInlineEdit(el, id, field); }
-  if (e.key === 'Escape') { cancelInlineEdit(el.closest('td')); }
+function editKey(e, el, id, field) {
+  if (e.key === 'Enter')  { e.preventDefault(); commitEdit(el, id, field); }
+  if (e.key === 'Escape') { cancelEdit(el.closest('td')); }
 }
 
-function cancelInlineEdit(td) {
+function cancelEdit(td) {
   td.classList.remove('active-edit');
   td.closest('tr').classList.remove('editing-row');
 }
 
-const _savingIds = new Set();
-async function saveInlineEdit(el, id, field) {
-  const saveKey = id + '_' + field;
-  if (_savingIds.has(saveKey)) return;
-  _savingIds.add(saveKey);
-  const td  = el.closest('td');
-  const rec = records.find(r => r.id === id);
-  if (!rec) { cancelInlineEdit(td); _savingIds.delete(saveKey); return; }
-  const newVal = el.value;
-  rec[field] = newVal;
-  cancelInlineEdit(td);
-  // Update display
-  const display = td.querySelector('.cell-display');
-  if (display) {
-    if (field === 'liStatus') {
-      const ls = LI_STATUS_COLORS[newVal] || {c:'var(--text-3)',bg:'transparent'};
-      display.innerHTML = newVal ? `<span class="badge" style="color:${ls.c};background:${ls.bg}"><span class="bdot" style="background:${ls.c}"></span>${esc(newVal)}</span>` : '—';
-    } else if (field === 'invenias') {
-      display.innerHTML = newVal === 'Yes'
-        ? `<span class="badge" style="color:#10b981;background:rgba(16,185,129,.12)"><span class="bdot" style="background:#10b981"></span>Yes</span>`
-        : newVal === 'No' ? `<span class="badge" style="color:var(--text-3);background:rgba(107,114,128,.1)">No</span>` : '—';
-    } else if (field === 'email') {
-      display.innerHTML = newVal ? `<a href="mailto:${esc(newVal)}" onclick="event.stopPropagation()">${esc(newVal)}</a>` : '—';
-    } else {
-      display.textContent = newVal || '—';
+const _saving = new Set();
+async function commitEdit(el, id, field) {
+  const key = id+'_'+field;
+  if (_saving.has(key)) return;
+  _saving.add(key);
+  try {
+    const td  = el.closest('td');
+    const rec = records.find(r => r.id === id);
+    if (!rec) { cancelEdit(td); return; }
+    const val = el.value;
+    rec[field] = val;
+    cancelEdit(td);
+    // Update cell display
+    const disp = td.querySelector('.cell-display');
+    if (disp) {
+      if (field === 'liStatus') {
+        const ls = LI_STATUS_COLORS[val] || {c:'var(--text-3)',bg:'transparent'};
+        disp.innerHTML = val ? `<span class="badge" style="color:${ls.c};background:${ls.bg}"><span class="bdot" style="background:${ls.c}"></span>${esc(val)}</span>` : '—';
+      } else if (field === 'invenias') {
+        disp.innerHTML = val==='Yes'
+          ? `<span class="badge" style="color:#10b981;background:rgba(16,185,129,.12)"><span class="bdot" style="background:#10b981"></span>Yes</span>`
+          : val==='No' ? `<span class="badge" style="color:var(--text-3);background:rgba(107,114,128,.1)">No</span>` : '—';
+      } else if (field === 'email') {
+        disp.innerHTML = val ? `<a href="mailto:${esc(val)}" onclick="event.stopPropagation()">${esc(val)}</a>` : '—';
+      } else {
+        disp.textContent = val || '—';
+      }
     }
+    // Save to SharePoint
+    if (msToken && !id.startsWith('d')) {
+      try { await spUpdate(id, rec); showToast('Saved ✓', 'ok'); }
+      catch(e) { showToast('Save failed: ' + e.message, 'err'); }
+    } else if (id.startsWith('d')) {
+      showToast('Demo mode — sign in to save', 'info');
+    }
+  } finally {
+    _saving.delete(key);
   }
-  // Sync to SharePoint
-  if (spSiteId && spListId && !id.startsWith('d')) {
-    try { await spUpdate(id, rec); showToast('Saved', 'ok'); }
-    catch(e) { showToast('Save failed: ' + e.message, 'err'); }
-  } else if (id.startsWith('d')) {
-    showToast('Demo mode — connect SharePoint to save changes', 'info');
-  }
-  _savingIds.delete(saveKey);
 }
 
 // ══════════════════════════════════════════════════════
 //  ADD NEW ROW
 // ══════════════════════════════════════════════════════
 async function addNewRow() {
+  if (!msToken) { showToast('Please sign in first', 'err'); return; }
   const rec = {
-    id: 'new_' + Date.now(),
-    companyName:'', contactName:'', title:'', telNumber:'',
+    id:'new_'+Date.now(), companyName:'', contactName:'', title:'', telNumber:'',
     email:'', liStatus:'Not Contacted', liPlatform:'', liOrLir:'',
     invenias:'', consultant:'', followUpDate:'', notes:''
   };
-  if (msToken && spSiteId && spListId) {
-    try {
-      const newId = await spCreate(rec);
-      if (newId) rec.id = newId;
-      else { showToast('Failed to create record in SharePoint', 'err'); return; }
-      showToast('New record created in SharePoint', 'ok');
-    } catch(e) { showToast('Failed to create record: ' + e.message, 'err'); return; }
-  } else {
-    showToast('Demo mode — record added locally', 'info');
-  }
+  try {
+    const newId = await spCreate(rec);
+    if (!newId) { showToast('Failed to create record', 'err'); return; }
+    rec.id = newId;
+    showToast('New record created', 'ok');
+  } catch(e) { showToast('Failed: ' + e.message, 'err'); return; }
   records.unshift(rec);
   applyFilters();
   setTimeout(() => {
-    const firstCell = document.querySelector('tbody tr:first-child td:first-child .cell-display');
-    if (firstCell) firstCell.click();
+    const first = document.querySelector('tbody tr:first-child td:first-child .cell-display');
+    if (first) first.click();
   }, 100);
 }
 
@@ -1168,10 +1002,10 @@ async function addNewRow() {
 //  DELETE
 // ══════════════════════════════════════════════════════
 async function deleteRecord(id) {
-  if (!confirm('Delete this record? This cannot be undone.')) return;
+  if (!confirm('Delete this record? Cannot be undone.')) return;
   records = records.filter(r => r.id !== id);
   applyFilters();
-  if (msToken && spSiteId && spListId && !id.startsWith('d') && !id.startsWith('new_')) {
+  if (msToken && !id.startsWith('d') && !id.startsWith('new_')) {
     try { await spDelete(id); showToast('Record deleted', 'ok'); }
     catch(e) { showToast('Delete failed: ' + e.message, 'err'); }
   } else {
@@ -1187,35 +1021,28 @@ function openCard(id) {
   const rec = records.find(r => r.id === id);
   if (!rec) return;
   editingId = id;
-
   document.getElementById('card-avatar').textContent  = initials(rec.companyName);
   document.getElementById('card-company').textContent = rec.companyName || '—';
-  document.getElementById('card-contact').textContent = [rec.contactName, rec.title].filter(Boolean).join(' · ') || '—';
-
+  document.getElementById('card-contact').textContent = [rec.contactName,rec.title].filter(Boolean).join(' · ') || '—';
   document.getElementById('card-body').innerHTML = `
     <div class="card-grid">
       ${FIELDS.map(f => {
         const val = rec[f.key] || '';
-        let input = '';
-        if (f.type === 'select') {
-          input = `<select class="cf-select" id="cf-${f.key}">
-            ${f.opts.map(o => `<option${o===val?' selected':''}>${o}</option>`).join('')}
-          </select>`;
-        } else if (f.type === 'textarea') {
-          input = `<textarea class="cf-textarea" id="cf-${f.key}">${esc(val)}</textarea>`;
-        } else if (f.type === 'email') {
-          input = `<input class="cf-input" type="email" id="cf-${f.key}" value="${esc(val)}">`;
+        let inp = '';
+        if (f.type==='select') {
+          inp = `<select class="cf-select" id="cf-${f.key}">${f.opts.map(o=>`<option${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
+        } else if (f.type==='textarea') {
+          inp = `<textarea class="cf-textarea" id="cf-${f.key}">${esc(val)}</textarea>`;
+        } else if (f.type==='date') {
+          inp = `<input class="cf-input" type="date" id="cf-${f.key}" value="${esc(val)}">`;
         } else {
-          input = `<input class="cf-input" type="text" id="cf-${f.key}" value="${esc(val)}">`;
+          inp = `<input class="cf-input" type="${f.type}" id="cf-${f.key}" value="${esc(val)}">`;
         }
-        const full = f.type === 'textarea' ? ' full' : '';
-        return `<div class="card-field${full}">
-          <div class="cf-label">${f.label}</div>
-          ${input}
+        return `<div class="card-field${f.type==='textarea'?' full':''}">
+          <div class="cf-label">${f.label}</div>${inp}
         </div>`;
       }).join('')}
     </div>`;
-
   document.getElementById('card-del-btn').onclick  = () => deleteRecord(id);
   document.getElementById('card-save-btn').onclick = () => saveCard(id);
   document.getElementById('card-overlay').classList.add('open');
@@ -1224,56 +1051,31 @@ function openCard(id) {
 async function saveCard(id) {
   const rec = records.find(r => r.id === id);
   if (!rec) return;
-  FIELDS.forEach(f => {
-    const el = document.getElementById('cf-' + f.key);
-    if (el) rec[f.key] = el.value;
-  });
+  FIELDS.forEach(f => { const el = document.getElementById('cf-'+f.key); if (el) rec[f.key] = el.value; });
   document.getElementById('card-company').textContent = rec.companyName || '—';
-  document.getElementById('card-contact').textContent = [rec.contactName, rec.title].filter(Boolean).join(' · ') || '—';
+  document.getElementById('card-contact').textContent = [rec.contactName,rec.title].filter(Boolean).join(' · ') || '—';
   document.getElementById('card-avatar').textContent  = initials(rec.companyName);
-
-  if (msToken && spSiteId && spListId && !id.startsWith('d') && !id.startsWith('new_')) {
-    try { await spUpdate(id, rec); showToast('Record saved to SharePoint', 'ok'); }
-    catch(e) { showToast('Save failed: ' + e.message, 'err'); }
+  if (msToken && !id.startsWith('d')) {
+    try { await spUpdate(id, rec); showToast('Saved ✓', 'ok'); }
+    catch(e) { showToast('Save failed: ' + e.message, 'err'); return; }
   } else {
-    showToast('Saved locally (demo mode)', 'info');
+    showToast('Saved locally', 'info');
   }
   applyFilters();
   closeCard();
 }
 
-function closeCard() {
-  document.getElementById('card-overlay').classList.remove('open');
-  editingId = null;
-}
+function closeCard() { document.getElementById('card-overlay').classList.remove('open'); editingId=null; }
 
 // ══════════════════════════════════════════════════════
 //  SETTINGS
 // ══════════════════════════════════════════════════════
-function openSettings()  { populateSettingsForm(); document.getElementById('settings-overlay').classList.add('open'); }
+function openSettings()  { document.getElementById('settings-overlay').classList.add('open'); }
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
-
-function populateSettingsForm() {
-  const g = (id, v) => { const e = document.getElementById(id); if (e) e.value = v || ''; };
-  g('s-cid',  cfg.clientId || '');
-  g('s-tid',  cfg.tenantId || '');
-  g('s-site', cfg.siteUrl  || SP_SITE);
-  g('s-list', cfg.listName || SP_LIST);
-}
-
-function saveSettings() {
-  cfg.clientId = document.getElementById('s-cid').value.trim();
-  cfg.tenantId = document.getElementById('s-tid').value.trim();
-  cfg.siteUrl  = document.getElementById('s-site').value.trim();
-  cfg.listName = document.getElementById('s-list').value.trim();
-  saveCfg();
-  spMsg('Settings saved.', 'ok');
-}
-
 function spMsg(msg, type) {
   const el = document.getElementById('sp-msg'); if (!el) return;
-  const c  = {ok:'#10b981', warn:'#f59e0b', err:'#ef4444', info:'var(--text-3)'};
-  el.style.color = c[type] || 'var(--text-3)';
+  const c = {ok:'#10b981',warn:'#f59e0b',err:'#ef4444',info:'var(--text-3)'};
+  el.style.color = c[type]||'var(--text-3)';
   el.textContent = msg;
 }
 
@@ -1281,50 +1083,41 @@ function spMsg(msg, type) {
 //  EXPORT CSV
 // ══════════════════════════════════════════════════════
 function exportCSV() {
-  const headers = FIELDS.map(f => f.label).join(',');
-  const rows    = filtered.map(r => FIELDS.map(f => `"${(r[f.key]||'').replace(/"/g,'""')}"`).join(','));
-  const csv     = [headers, ...rows].join('\n');
-  const blob    = new Blob([csv], {type:'text/csv'});
+  const headers = FIELDS.map(f=>f.label).join(',');
+  const rows    = filtered.map(r=>FIELDS.map(f=>`"${(r[f.key]||'').replace(/"/g,'""')}"`).join(','));
+  const csv     = [headers,...rows].join('\n');
+  const blob    = new Blob([csv],{type:'text/csv'});
   const a       = document.createElement('a');
   a.href        = URL.createObjectURL(blob);
-  a.download    = `biz-dev-2026-${today()}.csv`;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 200);
+  a.download    = `biz-dev-2026-${new Date().toISOString().split('T')[0]}.csv`;
+  a.style.display='none'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);document.body.removeChild(a);},200);
 }
 
 // ══════════════════════════════════════════════════════
-//  TOAST
+//  TOAST & HELPERS
 // ══════════════════════════════════════════════════════
-let toastTimer;
+let _toastTimer;
 function showToast(msg, type='ok') {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className   = `toast ${type} show`;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+  t.className = `toast ${type} show`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>t.classList.remove('show'), 3000);
 }
-
-// ══════════════════════════════════════════════════════
-//  HELPERS
-// ══════════════════════════════════════════════════════
 function initials(n) {
   if (!n) return '?';
   const w = n.trim().split(/\s+/);
-  return w.length >= 2 ? (w[0][0] + w[w.length-1][0]).toUpperCase() : n[0].toUpperCase();
+  return w.length>=2?(w[0][0]+w[w.length-1][0]).toUpperCase():n[0].toUpperCase();
 }
-function today() { return new Date().toISOString().split('T')[0]; }
-function esc(s)  { return (String(s==null?'':s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { return (String(s==null?'':s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Close modals on overlay click
 document.addEventListener('click', e => {
-  if (e.target.id === 'card-overlay')     closeCard();
-  if (e.target.id === 'settings-overlay') closeSettings();
+  if (e.target.id==='card-overlay')     closeCard();
+  if (e.target.id==='settings-overlay') closeSettings();
 });
-// Keyboard shortcuts
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeCard(); closeSettings(); }
+  if (e.key==='Escape') { closeCard(); closeSettings(); }
 });
 </script>
 </body>
