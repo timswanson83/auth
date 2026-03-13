@@ -357,15 +357,49 @@ function checkToken() {
     }
     history.replaceState({}, document.title, location.pathname);
     loadFromExcel();
+    scheduleRefresh();
     return;
   }
   const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
   const tk  = localStorage.getItem('vtdb_tk');
   if (tk && Date.now() < exp) {
     msToken = tk; setConn(true); loadFromExcel();
+    scheduleRefresh();
   } else {
     loadDemoData();
   }
+}
+
+// Silent token refresh via hidden iframe ~5 min before expiry
+function scheduleRefresh() {
+  const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
+  const delay = Math.max(exp - Date.now() - 300000, 60000);
+  setTimeout(silentRefresh, delay);
+}
+
+function silentRefresh() {
+  const ru = encodeURIComponent('https://timswanson83.github.io/auth');
+  const sc = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All openid profile');
+  const st = encodeURIComponent('https://timswanson83.github.io/auth/vancouver-tech-db.html');
+  const url = `https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/authorize?client_id=${AZ_CLIENT}&response_type=token&redirect_uri=${ru}&scope=${sc}&response_mode=fragment&state=${st}&prompt=none`;
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = url;
+  document.body.appendChild(iframe);
+  setTimeout(() => {
+    try {
+      const tk  = localStorage.getItem('vtdb_tk');
+      const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
+      if (tk && Date.now() < exp) {
+        msToken = tk;
+        setConn(true);
+        scheduleRefresh();
+      } else {
+        showToast('Session expiring soon — please sign in again', 'info');
+      }
+    } catch(e) {}
+    if (iframe.parentNode) document.body.removeChild(iframe);
+  }, 3000);
 }
 
 function setConn(on) {
