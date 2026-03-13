@@ -856,18 +856,18 @@ async function refreshRecords() {
     const data = await r.json();
     records = (data.value || []).map(item => ({
       id:           item.id,
-      companyName:  item.fields[SP_MAP.companyName]  || '',
-      contactName:  item.fields[SP_MAP.contactName]  || '',
-      title:        item.fields[SP_MAP.title]        || '',
-      telNumber:    item.fields[SP_MAP.telNumber]    || '',
-      email:        item.fields[SP_MAP.email]        || '',
-      liStatus:     item.fields[SP_MAP.liStatus]     || '',
-      liPlatform:   item.fields[SP_MAP.liPlatform]   || '',
-      liOrLir:      item.fields[SP_MAP.liOrLir]      || '',
-      invenias:     item.fields[SP_MAP.invenias]     || '',
-      consultant:   item.fields[SP_MAP.consultant]   || '',
+      companyName:  String(item.fields[SP_MAP.companyName]  ?? ''),
+      contactName:  String(item.fields[SP_MAP.contactName]  ?? ''),
+      title:        String(item.fields[SP_MAP.title]        ?? ''),
+      telNumber:    String(item.fields[SP_MAP.telNumber]    ?? ''),
+      email:        String(item.fields[SP_MAP.email]        ?? ''),
+      liStatus:     String(item.fields[SP_MAP.liStatus]     ?? ''),
+      liPlatform:   String(item.fields[SP_MAP.liPlatform]   ?? ''),
+      liOrLir:      String(item.fields[SP_MAP.liOrLir]      ?? ''),
+      invenias:     String(item.fields[SP_MAP.invenias]     ?? ''),
+      consultant:   String(item.fields[SP_MAP.consultant]   ?? ''),
       followUpDate: item.fields[SP_MAP.followUpDate] ? item.fields[SP_MAP.followUpDate].split('T')[0] : '',
-      notes:        item.fields[SP_MAP.notes]        || '',
+      notes:        String(item.fields[SP_MAP.notes]        ?? ''),
     }));
     applyFilters();
     showToast(`Loaded ${records.length} records from SharePoint`, 'ok');
@@ -1310,7 +1310,7 @@ function initials(n) {
   return w.length >= 2 ? (w[0][0] + w[w.length-1][0]).toUpperCase() : n[0].toUpperCase();
 }
 function today() { return new Date().toISOString().split('T')[0]; }
-function esc(s)  { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s)  { return (String(s==null?'':s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // Close modals on overlay click
 document.addEventListener('click', e => {
