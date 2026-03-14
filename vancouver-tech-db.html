@@ -316,6 +316,7 @@ const LI_COLORS = {
 let records  = [];
 let filtered = [];
 let sortCol  = 'companyName';
+let nextRowIndex = 1; // tracks the next available data row (1-based, excludes header)
 let sortDir  = 1;
 let editingId = null;
 let msToken  = null;
@@ -465,6 +466,7 @@ async function loadFromExcel() {
       records.push(rec);
     }
     applyFilters();
+    nextRowIndex = records.length + 1; // next available row
     showToast(`Loaded ${records.length} records`, 'ok');
   } catch(e) {
     showToast('Failed to load: ' + e.message, 'err');
@@ -488,16 +490,16 @@ async function saveRow(rec) {
 }
 
 async function appendRow(rec) {
-  // Find next empty row by checking current record count
-  const nextRow = records.length + 2; // +1 for header, +1 for new row
-  rec.id = String(records.length + 1); // data index
+  const excelRow = nextRowIndex + 1; // +1 for header row
+  rec.id = String(nextRowIndex);
+  nextRowIndex++; // increment immediately so next call uses the next row
   const values = [COLS.map(k => rec[k] || '')];
-  const range = `A${nextRow}:L${nextRow}`;
+  const range = `A${excelRow}:L${excelRow}`;
   const r = await apiFetch(
     `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets/${encodeURIComponent(SHEET_NAME)}/range(address='${range}')`,
     { method: 'PATCH', body: JSON.stringify({values}) }
   );
-  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e?.error?.message || r.status); }
+  if (!r.ok) { const e = await r.json().catch(()=>({})); nextRowIndex--; throw new Error(e?.error?.message || r.status); }
 }
 
 async function clearRow(rec) {
