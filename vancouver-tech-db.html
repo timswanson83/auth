@@ -377,32 +377,56 @@ function checkToken() {
 function scheduleRefresh() {
   const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
   const delay = Math.max(exp - Date.now() - 300000, 60000);
+  console.log('Next token refresh in', Math.round(delay/1000), 'seconds');
   setTimeout(silentRefresh, delay);
 }
 
 function silentRefresh() {
-  const ru = encodeURIComponent('https://timswanson83.github.io/auth');
-  const sc = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All openid profile');
-  const st = encodeURIComponent('https://timswanson83.github.io/auth/vancouver-tech-db.html');
+  console.log('Attempting silent token refresh...');
+  const ru  = encodeURIComponent('https://timswanson83.github.io/auth');
+  const sc  = encodeURIComponent('User.Read Files.ReadWrite.All Sites.ReadWrite.All openid profile');
+  const st  = encodeURIComponent('https://timswanson83.github.io/auth/vancouver-tech-db.html');
   const url = `https://login.microsoftonline.com/${AZ_TENANT}/oauth2/v2.0/authorize?client_id=${AZ_CLIENT}&response_type=token&redirect_uri=${ru}&scope=${sc}&response_mode=fragment&state=${st}&prompt=none`;
+
   const iframe = document.createElement('iframe');
   iframe.style.display = 'none';
   iframe.src = url;
   document.body.appendChild(iframe);
-  setTimeout(() => {
-    try {
+
+  // Listen for localStorage change written by index.html in the iframe
+  let refreshed = false;
+  const onStorage = (e) => {
+    if (e.key === 'vtdb_tk' && e.newValue) {
+      refreshed = true;
+      window.removeEventListener('storage', onStorage);
+      clearTimeout(fallbackTimer);
+      msToken = e.newValue;
+      setConn(true);
+      scheduleRefresh();
+      console.log('Silent refresh succeeded');
+      if (iframe.parentNode) document.body.removeChild(iframe);
+    }
+  };
+  window.addEventListener('storage', onStorage);
+
+  // Fallback: if storage event never fires within 10s, check manually
+  const fallbackTimer = setTimeout(() => {
+    window.removeEventListener('storage', onStorage);
+    if (iframe.parentNode) document.body.removeChild(iframe);
+    if (!refreshed) {
       const tk  = localStorage.getItem('vtdb_tk');
       const exp = parseInt(localStorage.getItem('vtdb_exp') || '0');
       if (tk && Date.now() < exp) {
         msToken = tk;
         setConn(true);
         scheduleRefresh();
+        console.log('Silent refresh succeeded (fallback poll)');
       } else {
-        showToast('Session expiring soon — please sign in again', 'info');
+        console.log('Silent refresh failed — notifying user');
+        showToast('Session expiring — please sign in again', 'info');
       }
-    } catch(e) {}
-    if (iframe.parentNode) document.body.removeChild(iframe);
-  }, 3000);
+    }
+  }, 10000);
 }
 
 function setConn(on) {
@@ -490,16 +514,20 @@ async function saveRow(rec) {
 }
 
 async function appendRow(rec) {
-  const excelRow = nextRowIndex + 1; // +1 for header row
-  rec.id = String(nextRowIndex);
-  nextRowIndex++; // increment immediately so next call uses the next row
+  // Always write to the row after the last record in the array
+  // Use the max existing id + 1 to avoid gaps causing overwrites
+  const maxId = records.reduce((m, r) => Math.max(m, parseInt(r.id)||0), 0);
+  const newIndex = maxId + 1;
+  const excelRow = newIndex + 1; // +1 for header row
+  rec.id = String(newIndex);
+  nextRowIndex = newIndex + 1;
   const values = [COLS.map(k => rec[k] || '')];
   const range = `A${excelRow}:L${excelRow}`;
   const r = await apiFetch(
     `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${itemId}/workbook/worksheets/${encodeURIComponent(SHEET_NAME)}/range(address='${range}')`,
     { method: 'PATCH', body: JSON.stringify({values}) }
   );
-  if (!r.ok) { const e = await r.json().catch(()=>({})); nextRowIndex--; throw new Error(e?.error?.message || r.status); }
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e?.error?.message || r.status); }
 }
 
 async function clearRow(rec) {
