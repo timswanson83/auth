@@ -606,7 +606,7 @@ function renderTable() {
     const ls=LI_COLORS[r.liStatus]||{c:'var(--text-3)',bg:'transparent'};
     const inv=r.invenias==='Yes'?`<span class="badge" style="color:#059669;background:rgba(5,150,105,.1)"><span class="bdot" style="background:#059669"></span>Yes</span>`:r.invenias==='No'?`<span class="badge" style="color:var(--text-3);background:rgba(107,114,128,.08)">No</span>`:'—';
     const lisBadge=r.liStatus?`<span class="badge" style="color:${ls.c};background:${ls.bg}"><span class="bdot" style="background:${ls.c}"></span>${esc(r.liStatus)}</span>`:'—';
-    return `<tr ondblclick="openCard('${r.id}')">
+    return `<tr data-id="${r.id}" ondblclick="openCard('${r.id}')">
       <td><div class="cell-display company" onclick="startEdit(this,'${r.id}','companyName')">${esc(r.companyName)||'—'}</div><div class="cell-edit"><input type="text" value="${esc(r.companyName)}" onkeydown="editKey(event,this,'${r.id}','companyName')" onblur="commitEdit(this,'${r.id}','companyName')"></div></td>
       <td><div class="cell-display" onclick="startEdit(this,'${r.id}','contactName')">${esc(r.contactName)||'—'}</div><div class="cell-edit"><input type="text" value="${esc(r.contactName)}" onkeydown="editKey(event,this,'${r.id}','contactName')" onblur="commitEdit(this,'${r.id}','contactName')"></div></td>
       <td><div class="cell-display" onclick="startEdit(this,'${r.id}','title')">${esc(r.title)||'—'}</div><div class="cell-edit"><input type="text" value="${esc(r.title)}" onkeydown="editKey(event,this,'${r.id}','title')" onblur="commitEdit(this,'${r.id}','title')"></div></td>
@@ -673,7 +673,15 @@ async function addNewRow(){
     records.push(rec);
     showToast('New record added','ok');
     applyFilters();
-    setTimeout(()=>{const first=document.querySelector('tbody tr:last-child td:first-child .cell-display');if(first)first.click();},100);
+    setTimeout(()=>{
+      // Find the row by the new record's ID, not by position
+      const row = document.querySelector(`tbody tr[data-id="${rec.id}"]`);
+      if(row){
+        row.scrollIntoView({block:'center'});
+        const cell = row.querySelector('td:first-child .cell-display');
+        if(cell) cell.click();
+      }
+    },100);
   }catch(e){showToast('Failed: '+e.message,'err');}
 }
 
