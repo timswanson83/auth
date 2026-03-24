@@ -173,8 +173,8 @@ td.active-edit .cell-edit{display:block;}
   <div class="filter-group">
     <span class="filter-label">Filter:</span>
     <select class="fsel" id="f-listatus" onchange="applyFilters()">
-      <option value="">LI Status</option>
-      <option>Not Contacted</option><option>Connected</option><option>InMail Sent</option><option>Invite Sent</option><option>Replied</option>
+      <option value="">LI & Email Status</option>
+      <option>Not Contacted</option><option>Connected</option><option>InMail Sent</option><option>Invite Sent</option><option>Email Sent</option><option>Replied</option>
     </select>
     <select class="fsel" id="f-liplatform" onchange="applyFilters()">
       <option value="">LI Platform</option>
@@ -211,7 +211,7 @@ td.active-edit .cell-edit{display:block;}
       <th onclick="sortBy('title')">Job Title <span class="si" id="sh-title">↕</span></th>
       <th onclick="sortBy('telNumber')">Tel Number <span class="si" id="sh-telNumber">↕</span></th>
       <th onclick="sortBy('email')">Email <span class="si" id="sh-email">↕</span></th>
-      <th onclick="sortBy('liStatus')">LI Status <span class="si" id="sh-liStatus">↕</span></th>
+      <th onclick="sortBy('liStatus')">LI & Email Status <span class="si" id="sh-liStatus">↕</span></th>
       <th onclick="sortBy('liPlatform')">LI Platform <span class="si" id="sh-liPlatform">↕</span></th>
       <th onclick="sortBy('liOrLir')">LI or LIR <span class="si" id="sh-liOrLir">↕</span></th>
       <th onclick="sortBy('invenias')">Invenias <span class="si" id="sh-invenias">↕</span></th>
@@ -293,7 +293,7 @@ const FIELDS = [
   {key:'title',        label:'Job Title',     type:'text'},
   {key:'telNumber',    label:'Tel Number',    type:'text'},
   {key:'email',        label:'Email',         type:'email'},
-  {key:'liStatus',     label:'LI Status',     type:'select', opts:['','Not Contacted','Connected','InMail Sent','Invite Sent','Replied']},
+  {key:'liStatus',     label:'LI Status',     type:'select', opts:['','Not Contacted','Connected','InMail Sent','Invite Sent','Email Sent','Replied']},
   {key:'liPlatform',   label:'LI Platform',   type:'select', opts:['','LinkedIn','LinkedIn Recruiter','Both']},
   {key:'liOrLir',      label:'LI or LIR',     type:'select', opts:['','LI','LIR','Both','Neither']},
   {key:'invenias',     label:'Invenias',      type:'select', opts:['','Yes','No']},
@@ -307,6 +307,7 @@ const LI_COLORS = {
   'Connected':     {c:'#059669',bg:'rgba(5,150,105,.1)'},
   'InMail Sent':   {c:'#d97706',bg:'rgba(217,119,6,.1)'},
   'Invite Sent':   {c:'#0891b2',bg:'rgba(8,145,178,.1)'},
+  'Email Sent':    {c:'#4338ca',bg:'rgba(67,56,202,.1)'},
   'Replied':       {c:'#4f46e5',bg:'rgba(79,70,229,.1)'},
 };
 
@@ -612,7 +613,7 @@ function renderTable() {
       <td><div class="cell-display" onclick="startEdit(this,'${r.id}','title')">${esc(r.title)||'—'}</div><div class="cell-edit"><input type="text" value="${esc(r.title)}" onkeydown="editKey(event,this,'${r.id}','title')" onblur="commitEdit(this,'${r.id}','title')"></div></td>
       <td><div class="cell-display" onclick="startEdit(this,'${r.id}','telNumber')">${esc(r.telNumber)||'—'}</div><div class="cell-edit"><input type="text" value="${esc(r.telNumber)}" onkeydown="editKey(event,this,'${r.id}','telNumber')" onblur="commitEdit(this,'${r.id}','telNumber')"></div></td>
       <td><div class="cell-display email" onclick="startEdit(this,'${r.id}','email')">${r.email?`<a href="mailto:${esc(r.email)}" onclick="event.stopPropagation()">${esc(r.email)}</a>`:'—'}</div><div class="cell-edit"><input type="email" value="${esc(r.email)}" onkeydown="editKey(event,this,'${r.id}','email')" onblur="commitEdit(this,'${r.id}','email')"></div></td>
-      <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liStatus')">${lisBadge}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liStatus')">${['','Not Contacted','Connected','InMail Sent','Invite Sent','Replied'].map(o=>`<option${o===r.liStatus?' selected':''}>${o}</option>`).join('')}</select></div></td>
+      <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liStatus')">${lisBadge}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liStatus')">${['','Not Contacted','Connected','InMail Sent','Invite Sent','Email Sent','Replied'].map(o=>`<option${o===r.liStatus?' selected':''}>${o}</option>`).join('')}</select></div></td>
       <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liPlatform')">${esc(r.liPlatform)||'—'}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liPlatform')">${['','LinkedIn','LinkedIn Recruiter','Both'].map(o=>`<option${o===r.liPlatform?' selected':''}>${o}</option>`).join('')}</select></div></td>
       <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','liOrLir')">${esc(r.liOrLir)||'—'}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','liOrLir')">${['','LI','LIR','Both','Neither'].map(o=>`<option${o===r.liOrLir?' selected':''}>${o}</option>`).join('')}</select></div></td>
       <td><div class="cell-display" onclick="startEditSel(this,'${r.id}','invenias')">${inv}</div><div class="cell-edit"><select onchange="commitEdit(this,'${r.id}','invenias')">${['','Yes','No'].map(o=>`<option${o===r.invenias?' selected':''}>${o}</option>`).join('')}</select></div></td>
